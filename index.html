@@ -71,7 +71,15 @@
                 if (!response.ok) throw new Error('Weather API unavailable');
                 
                 const result = await response.json();
-                const data = JSON.parse(result.contents);
+                let dataString = result.contents;
+                
+                // Handle base64 encoded data from CORS proxy
+                if (dataString.startsWith('data:application/geo+json;base64,')) {
+                    const base64Data = dataString.substring('data:application/geo+json;base64,'.length);
+                    dataString = atob(base64Data);
+                }
+                
+                const data = JSON.parse(dataString);
                 const props = data.properties;
                 
                 if (props && props.temperature && props.temperature.value !== null) {
@@ -131,7 +139,15 @@
                 if (!response.ok) throw new Error('Forecast API unavailable');
                 
                 const result = await response.json();
-                const data = JSON.parse(result.contents);
+                let dataString = result.contents;
+                
+                // Handle base64 encoded data from CORS proxy
+                if (dataString.startsWith('data:application/geo+json;base64,')) {
+                    const base64Data = dataString.substring('data:application/geo+json;base64,'.length);
+                    dataString = atob(base64Data);
+                }
+                
+                const data = JSON.parse(dataString);
                 const forecast = data.properties.periods;
                 
                 if (forecast && forecast.length > 0) {
@@ -188,7 +204,15 @@
                 if (!response.ok) throw new Error('Tide API unavailable');
                 
                 const result = await response.json();
-                const data = JSON.parse(result.contents);
+                let dataString = result.contents;
+                
+                // Handle base64 encoded data from CORS proxy  
+                if (dataString.startsWith('data:')) {
+                    // Skip data URLs, use contents directly for JSON APIs
+                    dataString = result.contents;
+                } 
+                
+                const data = JSON.parse(dataString);
                 const predictions = data.predictions;
                 const currentLevel = null; // Current level requires separate API call
                 
