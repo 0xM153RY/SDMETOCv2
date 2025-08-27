@@ -867,23 +867,33 @@
                     }
                     
                     if (nextHigh) {
-                        // Convert NOAA time to Pacific 24-hour format in backend
-                        const highDate = new Date(nextHigh.t);
-                        const pacificDate = new Date(highDate.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
-                        const highHour = pacificDate.getHours().toString().padStart(2, '0');
-                        const highMin = pacificDate.getMinutes().toString().padStart(2, '0');
-                        const highTime24 = `${highHour}:${highMin}`;
-                        updateElement('high-tide', highTime24 + ' PST - ' + parseFloat(nextHigh.v).toFixed(1) + ' ft');
+                        // BULLETPROOF 24-hour conversion - parse time string directly
+                        const timeStr = nextHigh.t; // NOAA format: "2025-08-27 14:23"
+                        let displayTime = "N/A";
+                        
+                        if (timeStr && timeStr.includes(' ')) {
+                            const timePart = timeStr.split(' ')[1]; // Get "14:23" part
+                            if (timePart && timePart.includes(':')) {
+                                displayTime = timePart.substring(0, 5); // Ensure HH:MM format
+                            }
+                        }
+                        
+                        updateElement('high-tide', displayTime + ' PST - ' + parseFloat(nextHigh.v).toFixed(1) + ' ft');
                     }
                     
                     if (nextLow) {
-                        // Convert NOAA time to Pacific 24-hour format in backend
-                        const lowDate = new Date(nextLow.t);
-                        const pacificDate = new Date(lowDate.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
-                        const lowHour = pacificDate.getHours().toString().padStart(2, '0');
-                        const lowMin = pacificDate.getMinutes().toString().padStart(2, '0');
-                        const lowTime24 = `${lowHour}:${lowMin}`;
-                        updateElement('low-tide', lowTime24 + ' PST - ' + parseFloat(nextLow.v).toFixed(1) + ' ft');
+                        // BULLETPROOF 24-hour conversion - parse time string directly  
+                        const timeStr = nextLow.t; // NOAA format: "2025-08-27 14:23"
+                        let displayTime = "N/A";
+                        
+                        if (timeStr && timeStr.includes(' ')) {
+                            const timePart = timeStr.split(' ')[1]; // Get "14:23" part
+                            if (timePart && timePart.includes(':')) {
+                                displayTime = timePart.substring(0, 5); // Ensure HH:MM format
+                            }
+                        }
+                        
+                        updateElement('low-tide', displayTime + ' PST - ' + parseFloat(nextLow.v).toFixed(1) + ' ft');
                     }
                     
                     // Determine if tide is rising or falling
