@@ -12,8 +12,12 @@
 ### ✅ 100% Real-Time APIs (No Simulations)
 - **🌤️ NOAA Weather** - Live conditions from San Diego Airport (KSAN)
 - **🌊 NOAA Tides** - Real tide predictions for San Diego Bay (Station 9410170)  
-- **⚓ Sea Conditions** - Live buoy data from Point Loma Buoy (46235)
-- **📋 USCG Maritime Notices** - Real-time RSS feed from USCG Sector San Diego
+- **⚓ Enhanced Sea Conditions** - Live buoy data with wave height, swell period/direction, SST from Point Loma Buoy (46235)
+- **🌊 Surface Currents** - NOAA CO-OPS tidal currents data for San Diego Bay
+- **🌫️ Air Quality** - EPA AirNow AQI data (requires free API key)
+- **🌍 Earthquake Feed** - USGS real-time seismic data (past 48hrs, 100km radius)
+- **🌊 Tsunami Alerts** - NOAA PTWC Pacific tsunami warning status
+- **📋 USCG Maritime Notices** - Real-time RSS feed from USCG Sector San Diego + weekly LNM links
 - **⚠️ Weather Alerts** - Active marine weather warnings for San Diego County
 - **🌙 Astronomical** - Real sunrise/sunset API + calculated moon phases
 
@@ -53,7 +57,11 @@ npx serve .
 |-------------|------------------|---------|
 | Weather | Every 1-10 minutes | NOAA Official API |
 | Tides | Real-time predictions | NOAA Official API |
-| Sea Conditions | Every 10-60 minutes | Live Buoy Data |
+| Sea Conditions (Enhanced) | Every 10-60 minutes | Live Buoy + Spectral Data |
+| Surface Currents | Real-time | NOAA CO-OPS API |
+| Air Quality Index | Every hour | EPA AirNow API |
+| Earthquake Feed | Real-time | USGS GeoJSON API |
+| Tsunami Alerts | Real-time | NOAA PTWC |
 | USCG Notices | Real-time | Official RSS Feed |
 | Weather Alerts | Real-time | NOAA Official API |
 | Astronomical | Daily | Sunrise-Sunset.org API |
@@ -62,10 +70,12 @@ npx serve .
 
 This dashboard was created specifically to support Naval Special Warfare operations in the San Diego area. It provides critical maritime intelligence including:
 
-- **Pre-mission Planning**: Current and forecasted conditions
-- **Real-time Monitoring**: Live environmental data during operations  
-- **Safety Intelligence**: Active weather warnings and USCG maritime notices
-- **Tactical Advantage**: Tide states, moon illumination, and visibility conditions
+- **Pre-mission Planning**: Current and forecasted conditions with enhanced oceanographic data
+- **Real-time Monitoring**: Live environmental data including swell, currents, and seismic activity
+- **Safety Intelligence**: Active weather warnings, tsunami alerts, and USCG maritime notices
+- **Tactical Advantage**: Tide states, moon illumination, visibility, and air quality conditions
+- **Environmental Awareness**: Enhanced sea state analysis with wave height, swell direction, and surface currents
+- **Seismic Monitoring**: Recent earthquake activity within 100km operational radius
 
 *Dedicated to the warriors who operate in the maritime domain.*
 

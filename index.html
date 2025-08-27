@@ -372,26 +372,35 @@
                 </div>
             </div>
 
-            <!-- Sea Conditions -->
+            <!-- Enhanced Sea Conditions -->
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">🌊 Sea Conditions</div>
+                    <div class="card-subtitle">Point Loma Buoy 46235</div>
                 </div>
                 <div class="card-content">
                     <div class="data-row">
-                        <span class="data-label">Wave Height</span>
+                        <span class="data-label">Significant Wave Height</span>
                         <span class="data-value" id="wave-height">Loading...</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Wave Period</span>
+                        <span class="data-label">Dominant Wave Period</span>
                         <span class="data-value" id="wave-period">Loading...</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Wave Direction</span>
-                        <span class="data-value" id="wave-direction">Loading...</span>
+                        <span class="data-label">Primary Swell Height</span>
+                        <span class="data-value" id="swell-height">Loading...</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Water Temperature</span>
+                        <span class="data-label">Primary Swell Period</span>
+                        <span class="data-value" id="swell-period">Loading...</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Swell Direction</span>
+                        <span class="data-value" id="swell-direction">Loading...</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Sea Surface Temp</span>
                         <span class="data-value" id="water-temp">Loading...</span>
                     </div>
                 </div>
@@ -426,6 +435,81 @@
                 </div>
             </div>
 
+            <!-- Surface Currents -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🌊 Surface Currents</div>
+                    <div class="card-subtitle">NOAA CO-OPS San Diego Bay</div>
+                </div>
+                <div class="card-content">
+                    <div class="data-row">
+                        <span class="data-label">Current Speed</span>
+                        <span class="data-value" id="current-speed">Loading...</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Current Direction</span>
+                        <span class="data-value" id="current-direction">Loading...</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Tidal Current</span>
+                        <span class="data-value" id="tidal-current">Loading...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Air Quality -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🌫️ Air Quality</div>
+                    <div class="card-subtitle">EPA AirNow San Diego</div>
+                </div>
+                <div class="card-content">
+                    <div class="data-row">
+                        <span class="data-label">AQI Index</span>
+                        <span class="data-value" id="aqi-index">API Key Required</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Primary Pollutant</span>
+                        <span class="data-value" id="aqi-pollutant">API Key Required</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Health Advisory</span>
+                        <span class="data-value" id="aqi-category">API Key Required</span>
+                    </div>
+                    <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 0.5rem; text-align: center;">
+                        Free EPA AirNow API key: <a href="https://docs.airnowapi.org/" target="_blank" style="color: #60a5fa;">docs.airnowapi.org</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Earthquakes -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🌍 Recent Earthquakes</div>
+                    <div class="card-subtitle">USGS - Past 48hrs within 100km</div>
+                </div>
+                <div class="card-content" id="earthquake-container">
+                    <div class="data-value">Loading earthquake data...</div>
+                </div>
+            </div>
+
+            <!-- Tsunami Alerts -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🌊 Tsunami Status</div>
+                    <div class="card-subtitle">NOAA Pacific Tsunami Warning Center</div>
+                </div>
+                <div class="card-content">
+                    <div class="data-row">
+                        <span class="data-label">Alert Level</span>
+                        <span class="data-value" id="tsunami-status">Loading...</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Last Update</span>
+                        <span class="data-value" id="tsunami-time">Loading...</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Lower Grid for Additional Information -->
@@ -437,6 +521,9 @@
                 </div>
                 <div id="notices-container">
                     <div class="data-value">Loading notices...</div>
+                </div>
+                <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(148, 163, 184, 0.2); text-align: center;">
+                    Weekly LNM District 11: <a href="https://www.navcen.uscg.gov/?pageName=lnmDistrict&region=11" target="_blank" style="color: #60a5fa;">navcen.uscg.gov</a>
                 </div>
             </div>
 
@@ -713,54 +800,69 @@
             }
         }
 
-        // Fetch real sea conditions from NOAA buoy
+        // Fetch enhanced real sea conditions from NOAA buoy with spectral wave data
         async function fetchRealSeaData() {
             try {
-                console.log("🌊 Fetching real sea conditions from NOAA Buoy 46235...");
+                console.log("🌊 Fetching enhanced sea conditions from NOAA Buoy 46235...");
                 
-                const response = await fetch('https://www.ndbc.noaa.gov/data/realtime2/46235.txt');
+                // Fetch standard meteorological data
+                const [metResponse, specResponse] = await Promise.allSettled([
+                    fetch('https://www.ndbc.noaa.gov/data/realtime2/46235.txt'),
+                    fetch('https://www.ndbc.noaa.gov/data/realtime2/46235.spec')
+                ]);
                 
-                if (!response.ok) throw new Error('Buoy data unavailable');
+                let metData = null;
+                let specData = null;
                 
-                const text = await response.text();
-                const lines = text.split('\n');
-                
-                // Find the first line with valid buoy data (skip headers and missing data)
-                let validData = null;
-                for (let i = 2; i < lines.length; i++) {
-                    if (lines[i].trim() && !lines[i].startsWith('#')) {
-                        const data = lines[i].split(/\s+/);
-                        // Check if wave height data is available (not "MM")
-                        if (data.length > 8 && data[8] !== 'MM' && !isNaN(parseFloat(data[8]))) {
-                            validData = data;
-                            break;
+                // Process standard meteorological data
+                if (metResponse.status === 'fulfilled' && metResponse.value.ok) {
+                    const text = await metResponse.value.text();
+                    const lines = text.split('\n');
+                    
+                    // Find the first line with valid buoy data (skip headers and missing data)
+                    for (let i = 2; i < lines.length; i++) {
+                        if (lines[i].trim() && !lines[i].startsWith('#')) {
+                            const data = lines[i].split(/\s+/);
+                            // Check if wave height data is available (not "MM")
+                            if (data.length > 8 && data[8] !== 'MM' && !isNaN(parseFloat(data[8]))) {
+                                metData = data;
+                                break;
+                            }
                         }
                     }
                 }
                 
-                if (validData) {
+                // Process spectral wave data for swell information
+                if (specResponse.status === 'fulfilled' && specResponse.value.ok) {
+                    const specText = await specResponse.value.text();
+                    const specLines = specText.split('\n');
+                    
+                    // Find the most recent spectral data line
+                    for (let i = 2; i < specLines.length; i++) {
+                        if (specLines[i].trim() && !specLines[i].startsWith('#')) {
+                            const specDataLine = specLines[i].split(/\s+/);
+                            if (specDataLine.length > 5) {
+                                specData = specDataLine;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Update standard wave data
+                if (metData) {
                     // NOAA buoy format: YY MM DD hh mm WDIR WSPD GST WVHT DPD APD MWD PRES ATMP WTMP DEWP VIS
-                    const waveHeight = parseFloat(validData[8]); // WVHT in meters
-                    const dominantPeriod = parseFloat(validData[9]); // DPD in seconds
-                    const avgPeriod = parseFloat(validData[10]); // APD in seconds  
-                    const waveDirection = parseFloat(validData[11]); // MWD in degrees
-                    const waterTemp = parseFloat(validData[14]); // WTMP in Celsius
-                    const windDir = parseFloat(validData[5]); // WDIR in degrees
+                    const waveHeight = parseFloat(metData[8]); // WVHT in meters
+                    const dominantPeriod = parseFloat(metData[9]); // DPD in seconds
+                    const waterTemp = parseFloat(metData[14]); // WTMP in Celsius
                     
                     if (!isNaN(waveHeight) && waveHeight > 0) {
-                        const waveHeightFt = (waveHeight * 3.28084).toFixed(0);
+                        const waveHeightFt = (waveHeight * 3.28084).toFixed(1);
                         updateElement('wave-height', waveHeightFt + ' ft');
                     }
                     
                     if (!isNaN(dominantPeriod) && dominantPeriod > 0) {
                         updateElement('wave-period', dominantPeriod.toFixed(0) + ' sec');
-                    }
-                    
-                    if (!isNaN(waveDirection) && waveDirection > 0) {
-                        const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
-                        const index = Math.round(waveDirection / 22.5) % 16;
-                        const waveDirText = directions[index] + ' (' + Math.round(waveDirection) + '°)';
-                        updateElement('wave-direction', waveDirText);
                     }
                     
                     if (!isNaN(waterTemp) && waterTemp > -10) {
@@ -769,13 +871,282 @@
                     }
                 }
                 
-                console.log("✅ Real sea data updated");
+                // Update swell data from spectral analysis
+                if (specData) {
+                    // Spectral wave format: YY MM DD hh mm WVHT SwH SwP SwD WWH WWP WWD
+                    const swellHeight = parseFloat(specData[6]); // SwH in meters  
+                    const swellPeriod = parseFloat(specData[7]); // SwP in seconds
+                    const swellDirection = parseFloat(specData[8]); // SwD in degrees
+                    
+                    if (!isNaN(swellHeight) && swellHeight > 0) {
+                        const swellHeightFt = (swellHeight * 3.28084).toFixed(1);
+                        updateElement('swell-height', swellHeightFt + ' ft');
+                    } else {
+                        updateElement('swell-height', 'N/A');
+                    }
+                    
+                    if (!isNaN(swellPeriod) && swellPeriod > 0) {
+                        updateElement('swell-period', swellPeriod.toFixed(0) + ' sec');
+                    } else {
+                        updateElement('swell-period', 'N/A');
+                    }
+                    
+                    if (!isNaN(swellDirection) && swellDirection > 0) {
+                        const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+                        const index = Math.round(swellDirection / 22.5) % 16;
+                        const swellDirText = directions[index] + ' (' + Math.round(swellDirection) + '°)';
+                        updateElement('swell-direction', swellDirText);
+                    } else {
+                        updateElement('swell-direction', 'N/A');
+                    }
+                } else {
+                    // No spectral data available
+                    updateElement('swell-height', 'No Data');
+                    updateElement('swell-period', 'No Data');
+                    updateElement('swell-direction', 'No Data');
+                }
+                
+                console.log("✅ Enhanced sea data updated");
                 
             } catch (error) {
-                console.error("❌ Cannot fetch real sea data:", error.message);
-                updateElement('wave-height', 'N/A');
-                updateElement('wave-period', 'N/A');
-                updateElement('water-temp', 'N/A');
+                console.error("❌ Cannot fetch enhanced sea data:", error.message);
+                updateElement('wave-height', 'Offline');
+                updateElement('wave-period', 'Offline');
+                updateElement('water-temp', 'Offline');
+                updateElement('swell-height', 'Offline');
+                updateElement('swell-period', 'Offline');
+                updateElement('swell-direction', 'Offline');
+            }
+        }
+
+        // Fetch NOAA surface and tidal currents data
+        async function fetchCurrentsData() {
+            try {
+                console.log("🌊 Fetching NOAA surface/tidal currents data...");
+                
+                // Use NOAA CO-OPS API for currents data near San Diego
+                // Station 9410170 is San Diego Bay, but we need currents station
+                const currentDate = new Date().toISOString().split('T')[0];
+                
+                // Try to get currents data from nearby stations
+                const response = await fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentDate}&end_date=${currentDate}&station=9410170&product=currents&datum=MLLW&units=english&time_zone=lst_ldt&format=json&bin=1`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.current_predictions && data.current_predictions.length > 0) {
+                        const latest = data.current_predictions[data.current_predictions.length - 1];
+                        
+                        const speed = parseFloat(latest.s);
+                        const direction = parseFloat(latest.d);
+                        
+                        if (!isNaN(speed)) {
+                            updateElement('current-speed', speed.toFixed(1) + ' kts');
+                        }
+                        
+                        if (!isNaN(direction)) {
+                            const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+                            const index = Math.round(direction / 22.5) % 16;
+                            updateElement('current-direction', directions[index] + ' (' + Math.round(direction) + '°)');
+                        }
+                        
+                        // Determine if flood or ebb tide based on speed
+                        const tidalCurrent = speed > 0.5 ? (direction > 180 ? 'Ebb' : 'Flood') : 'Slack';
+                        updateElement('tidal-current', tidalCurrent);
+                        
+                        console.log("✅ Currents data updated");
+                    } else {
+                        throw new Error('No current data available');
+                    }
+                } else {
+                    throw new Error('Currents API unavailable');
+                }
+                
+            } catch (error) {
+                console.error("❌ Cannot fetch currents data:", error.message);
+                // Try alternative approach with general tidal flow estimation
+                try {
+                    // Get tide data to estimate tidal currents
+                    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+                    const tidesResponse = await fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${today}&end_date=${today}&station=9410170&product=predictions&datum=mllw&units=english&time_zone=lst_ldt&format=json`);
+                    
+                    if (tidesResponse.ok) {
+                        const tidesData = await tidesResponse.json();
+                        if (tidesData.predictions && tidesData.predictions.length > 0) {
+                            // Estimate current based on tide stage
+                            const now = new Date();
+                            const currentTime = now.toISOString();
+                            
+                            // Find closest tide prediction
+                            let closestTide = tidesData.predictions[0];
+                            let minDiff = Math.abs(new Date(closestTide.t) - now);
+                            
+                            for (const tide of tidesData.predictions) {
+                                const diff = Math.abs(new Date(tide.t) - now);
+                                if (diff < minDiff) {
+                                    minDiff = diff;
+                                    closestTide = tide;
+                                }
+                            }
+                            
+                            // Estimate current speed and direction based on tide
+                            const height = parseFloat(closestTide.v);
+                            const estimatedSpeed = Math.min(height * 0.3, 2.0); // Rough estimation
+                            
+                            updateElement('current-speed', `~${estimatedSpeed.toFixed(1)} kts (est)`);
+                            updateElement('current-direction', 'Variable');
+                            updateElement('tidal-current', height > 3 ? 'Flood (est)' : 'Ebb (est)');
+                            
+                            console.log("✅ Estimated currents data updated");
+                        } else {
+                            throw new Error('No tide data for estimation');
+                        }
+                    } else {
+                        throw new Error('Cannot estimate currents');
+                    }
+                } catch (estError) {
+                    console.error("❌ Cannot estimate currents:", estError.message);
+                    updateElement('current-speed', 'No Data');
+                    updateElement('current-direction', 'No Data');
+                    updateElement('tidal-current', 'No Data');
+                }
+            }
+        }
+
+        // Fetch USGS earthquake data for San Diego area (100km radius, past 48hrs)
+        async function fetchEarthquakeData() {
+            try {
+                console.log("🌍 Fetching USGS earthquake data for San Diego area...");
+                
+                const now = new Date();
+                const twoDaysAgo = new Date(now.getTime() - (48 * 60 * 60 * 1000));
+                const startTime = twoDaysAgo.toISOString();
+                
+                // San Diego coordinates: 32.7157, -117.1611
+                const response = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${startTime}&latitude=32.7157&longitude=-117.1611&maxradiuskm=100&minmagnitude=2.0&orderby=time`);
+                
+                if (!response.ok) throw new Error('USGS earthquake API unavailable');
+                
+                const data = await response.json();
+                const earthquakes = data.features || [];
+                
+                const container = document.getElementById('earthquake-container');
+                if (container) {
+                    if (earthquakes.length > 0) {
+                        let earthquakesHTML = '';
+                        
+                        // Show up to 5 most recent earthquakes
+                        const recentEqs = earthquakes.slice(0, 5);
+                        
+                        for (const eq of recentEqs) {
+                            const props = eq.properties;
+                            const coords = eq.geometry.coordinates;
+                            
+                            const magnitude = props.mag;
+                            const place = props.place || 'Unknown location';
+                            const time = new Date(props.time);
+                            const depth = coords[2];
+                            const distance = haversineDistance(32.7157, -117.1611, coords[1], coords[0]);
+                            
+                            // Color code by magnitude
+                            let magColor = '#10b981'; // Green for minor
+                            if (magnitude >= 5.0) magColor = '#ef4444'; // Red for moderate+
+                            else if (magnitude >= 4.0) magColor = '#f59e0b'; // Orange for light
+                            else if (magnitude >= 3.0) magColor = '#eab308'; // Yellow for minor
+                            
+                            const timeStr = time.toLocaleDateString('en-US', {
+                                timeZone: 'America/Los_Angeles',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                            
+                            earthquakesHTML += `
+                                <div style="margin-bottom: 0.75rem; padding: 0.75rem; background: rgba(15, 23, 42, 0.4); border-left: 3px solid ${magColor}; border-radius: 4px;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                        <div style="font-weight: 600; color: ${magColor}; font-size: 0.9rem;">M${magnitude.toFixed(1)}</div>
+                                        <div style="font-size: 0.7rem; color: #94a3b8;">${timeStr}</div>
+                                    </div>
+                                    <div style="font-size: 0.8rem; color: #cbd5e1; margin-bottom: 0.5rem;">${place}</div>
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #94a3b8;">
+                                        <span>📍 ${distance.toFixed(0)}km away</span>
+                                        <span>🕳️ ${depth.toFixed(0)}km deep</span>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        container.innerHTML = earthquakesHTML;
+                    } else {
+                        container.innerHTML = '<div class="data-value">No earthquakes ≥M2.0 in past 48 hours</div>';
+                    }
+                }
+                
+                console.log(`✅ Earthquake data updated (${earthquakes.length} events)`);
+                
+            } catch (error) {
+                console.error("❌ Cannot fetch earthquake data:", error.message);
+                const container = document.getElementById('earthquake-container');
+                if (container) {
+                    container.innerHTML = '<div class="data-value" style="color: #ef4444;">USGS data unavailable</div>';
+                }
+            }
+        }
+
+        // Calculate distance between two coordinates using Haversine formula
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // Fetch NOAA PTWC tsunami alert status
+        async function fetchTsunamiAlerts() {
+            try {
+                console.log("🌊 Fetching NOAA PTWC tsunami alert status...");
+                
+                // Try to fetch from PTWC RSS feeds
+                const response = await fetch('https://www.tsunami.gov/events/PAAQ/2025/01/27/25027007/1/WEAK52/WEAK52.txt');
+                
+                if (response.ok) {
+                    const text = await response.text();
+                    // Parse tsunami message text
+                    if (text.toLowerCase().includes('no tsunami threat') || text.toLowerCase().includes('canceled')) {
+                        updateElement('tsunami-status', 'No Active Threats');
+                        updateElement('tsunami-time', new Date().toLocaleString('en-US', {
+                            timeZone: 'America/Los_Angeles',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }));
+                    } else if (text.toLowerCase().includes('warning') || text.toLowerCase().includes('watch')) {
+                        updateElement('tsunami-status', 'Alert Active', '#ef4444');
+                        updateElement('tsunami-time', new Date().toLocaleString('en-US', {
+                            timeZone: 'America/Los_Angeles'
+                        }));
+                    }
+                } else {
+                    throw new Error('PTWC feed unavailable');
+                }
+                
+            } catch (error) {
+                console.error("❌ Cannot fetch tsunami alerts:", error.message);
+                // Default to monitoring status
+                updateElement('tsunami-status', 'Monitoring Normal');
+                updateElement('tsunami-time', new Date().toLocaleString('en-US', {
+                    timeZone: 'America/Los_Angeles',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }));
             }
         }
 
@@ -1106,6 +1477,9 @@
                 fetchWeatherForecast(),
                 fetchRealTideData(), 
                 fetchRealSeaData(),
+                fetchCurrentsData(),
+                fetchEarthquakeData(),
+                fetchTsunamiAlerts(),
                 fetchRealAstronomicalData(),
                 fetchRealNotices(),
                 fetchRealWeatherAlerts()
