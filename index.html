@@ -811,6 +811,8 @@
                 const predUrl = getCorsProxyUrl(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${today}&end_date=${tomorrow}&station=9410170&product=predictions&datum=mllw&units=english&time_zone=lst_ldt&format=json&interval=hilo`);
                 const currentUrl = getCorsProxyUrl(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=9410170&product=water_level&datum=mllw&units=english&time_zone=lst_ldt&format=json`);
                 
+                console.log('TIDE URLS:', { predUrl, currentUrl });
+                
                 
                 const [predResponse, currentResponse] = await Promise.allSettled([
                     fetch(predUrl),
@@ -980,7 +982,13 @@
                                  (window.location.protocol === 'https:' && window.location.hostname !== 'localhost');
             
             if (needsCorsProxy) {
-                // Use alternative CORS proxy - codetabs is more reliable
+                // Special handling for NOAA APIs that are sensitive to URL encoding
+                if (originalUrl.includes('tidesandcurrents.noaa.gov')) {
+                    // Try allorigins for NOAA APIs - better URL handling
+                    return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl);
+                }
+                
+                // Use codetabs for other APIs
                 const corsProxy = 'https://api.codetabs.com/v1/proxy?quest=';
                 return corsProxy + encodeURIComponent(originalUrl);
             }
