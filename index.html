@@ -897,11 +897,28 @@
             }
         }
 
+        // CORS proxy helper function
+        function getCorsProxyUrl(originalUrl) {
+            // Check if we need CORS proxy (GitHub Pages or other hosted environments)
+            const needsCorsProxy = window.location.hostname.includes('github.io') || 
+                                 (window.location.protocol === 'https:' && window.location.hostname !== 'localhost');
+            
+            if (needsCorsProxy) {
+                // Use a public CORS proxy service
+                const corsProxy = 'https://api.allorigins.win/raw?url=';
+                return corsProxy + encodeURIComponent(originalUrl);
+            }
+            
+            // Use direct URL for local development
+            return originalUrl;
+        }
+
         // Fetch enhanced real sea conditions from NOAA buoy with spectral wave data
         async function fetchRealSeaData() {
             try {
                 console.log("🌊 DEBUGGING: Starting fetchRealSeaData function...");
                 console.log("🌊 DEBUGGING: Current protocol:", window.location.protocol);
+                console.log("🌊 DEBUGGING: Current hostname:", window.location.hostname);
                 
                 // Always attempt real NOAA data first - no fallbacks allowed
                 // Primary: Buoy 46235 (Imperial Beach Nearshore), Backup: Buoy 46232 (Point Loma South)
@@ -909,10 +926,18 @@
                 console.log("🌊 DEBUGGING: Fetching enhanced sea conditions...");
                 console.log("📍 DEBUGGING: Trying primary buoy 46235 (Imperial Beach Nearshore)");
                 
+                // Prepare URLs with CORS proxy if needed
+                const buoy46235TxtUrl = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46235.txt');
+                const buoy46235SpecUrl = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46235.spec');
+                
+                console.log("📍 DEBUGGING: Primary URLs:");
+                console.log("   .txt:", buoy46235TxtUrl);
+                console.log("   .spec:", buoy46235SpecUrl);
+                
                 // Try primary buoy 46235 first
                 let [metResponse, specResponse] = await Promise.allSettled([
-                    fetch('https://www.ndbc.noaa.gov/data/realtime2/46235.txt'),
-                    fetch('https://www.ndbc.noaa.gov/data/realtime2/46235.spec')
+                    fetch(buoy46235TxtUrl),
+                    fetch(buoy46235SpecUrl)
                 ]);
                 
                 let currentBuoy = '46235 (Imperial Beach Nearshore)';
@@ -920,9 +945,17 @@
                 // If primary buoy fails, try backup buoy 46232
                 if (metResponse.status !== 'fulfilled' || !metResponse.value.ok) {
                     console.log("⚠️ Primary buoy 46235 unavailable - trying backup buoy 46232 (Point Loma South)");
+                    
+                    const buoy46232TxtUrl = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46232.txt');
+                    const buoy46232SpecUrl = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46232.spec');
+                    
+                    console.log("📍 DEBUGGING: Backup URLs:");
+                    console.log("   .txt:", buoy46232TxtUrl);
+                    console.log("   .spec:", buoy46232SpecUrl);
+                    
                     [metResponse, specResponse] = await Promise.allSettled([
-                        fetch('https://www.ndbc.noaa.gov/data/realtime2/46232.txt'),
-                        fetch('https://www.ndbc.noaa.gov/data/realtime2/46232.spec')
+                        fetch(buoy46232TxtUrl),
+                        fetch(buoy46232SpecUrl)
                     ]);
                     currentBuoy = '46232 (Point Loma South)';
                 }
@@ -1571,8 +1604,11 @@
             try {
                 console.log("📋 Fetching real USCG maritime notices...");
                 
-                // Use real USCG Sector San Diego RSS feed
-                const response = await fetch('https://public.govdelivery.com/topics/USDHSCG_436/feed.rss');
+                // Use real USCG Sector San Diego RSS feed with CORS proxy if needed
+                const uscgRssUrl = getCorsProxyUrl('https://public.govdelivery.com/topics/USDHSCG_436/feed.rss');
+                console.log("📋 USCG RSS URL:", uscgRssUrl);
+                
+                const response = await fetch(uscgRssUrl);
                 
                 if (!response.ok) throw new Error('USCG notices RSS unavailable');
                 
