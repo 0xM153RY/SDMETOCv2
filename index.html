@@ -426,30 +426,6 @@
                 </div>
             </div>
 
-            <!-- Maritime Traffic Density -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">🚢 Traffic Density</div>
-                </div>
-                <div class="card-content">
-                    <div class="data-row">
-                        <span class="data-label">San Diego Bay</span>
-                        <span class="data-value" id="bay-traffic">Loading...</span>
-                    </div>
-                    <div class="data-row">
-                        <span class="data-label">Harbor Entrance</span>
-                        <span class="data-value" id="entrance-traffic">Loading...</span>
-                    </div>
-                    <div class="data-row">
-                        <span class="data-label">Offshore Zone</span>
-                        <span class="data-value" id="offshore-traffic">Loading...</span>
-                    </div>
-                    <div class="data-row">
-                        <span class="data-label">Channel Traffic</span>
-                        <span class="data-value" id="channel-traffic">Loading...</span>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Lower Grid for Additional Information -->
@@ -464,15 +440,6 @@
                 </div>
             </div>
 
-            <!-- Marine Events Calendar -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">📅 Marine Events</div>
-                </div>
-                <div id="events-container">
-                    <div class="data-value">Loading events...</div>
-                </div>
-            </div>
 
             <!-- Active Alerts -->
             <div class="card">
@@ -1037,307 +1004,92 @@
             }
         }
 
-        // Fetch real-time maritime traffic density using AIS aggregated data
-        async function fetchTrafficDensity() {
-            try {
-                console.log("🚢 Fetching maritime traffic density...");
-                
-                // Use a combination of public marine data sources to determine traffic density
-                // Since direct AIS access is limited, we'll use Coast Guard and port authority data
-                
-                const now = new Date();
-                const hour = now.getHours();
-                const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-                
-                // Calculate traffic density based on real-world San Diego maritime patterns
-                // Peak traffic: 0600-0900, 1400-1700 on weekdays
-                // Weekend patterns differ significantly
-                
-                let baseTrafficMultiplier = 1.0;
-                
-                // Time-based traffic patterns
-                if (hour >= 6 && hour <= 9) baseTrafficMultiplier = 1.8; // Morning rush
-                else if (hour >= 14 && hour <= 17) baseTrafficMultiplier = 1.6; // Afternoon traffic
-                else if (hour >= 18 && hour <= 21) baseTrafficMultiplier = 1.3; // Evening activity
-                else if (hour >= 22 || hour <= 5) baseTrafficMultiplier = 0.4; // Night hours
-                
-                // Day-of-week adjustments
-                if (dayOfWeek === 0 || dayOfWeek === 6) { // Weekend
-                    baseTrafficMultiplier *= 0.7; // Less commercial, more recreational
-                }
-                
-                // Weather impact (use current conditions)
-                const weatherElement = document.getElementById('wind-speed');
-                const currentWindText = weatherElement ? weatherElement.textContent : '';
-                const windSpeed = currentWindText.includes('mph') ? 
-                    parseInt(currentWindText.match(/(\d+)/)[1]) : 10;
-                
-                let weatherMultiplier = 1.0;
-                if (windSpeed > 25) weatherMultiplier = 0.6; // High winds reduce traffic
-                else if (windSpeed > 15) weatherMultiplier = 0.8;
-                
-                // Calculate density for each zone
-                const bayTraffic = Math.round((8 + Math.random() * 12) * baseTrafficMultiplier * weatherMultiplier);
-                const entranceTraffic = Math.round((3 + Math.random() * 7) * baseTrafficMultiplier * weatherMultiplier);
-                const offshoreTraffic = Math.round((5 + Math.random() * 15) * baseTrafficMultiplier * weatherMultiplier);
-                const channelTraffic = Math.round((2 + Math.random() * 6) * baseTrafficMultiplier * weatherMultiplier);
-                
-                // Determine traffic level descriptions and colors
-                function getTrafficLevel(count) {
-                    if (count <= 3) return { level: 'Light', color: '#10b981' };
-                    else if (count <= 8) return { level: 'Moderate', color: '#f59e0b' };
-                    else if (count <= 15) return { level: 'Heavy', color: '#ef4444' };
-                    else return { level: 'Congested', color: '#dc2626' };
-                }
-                
-                const bayLevel = getTrafficLevel(bayTraffic);
-                const entranceLevel = getTrafficLevel(entranceTraffic);
-                const offshoreLevel = getTrafficLevel(offshoreTraffic);
-                const channelLevel = getTrafficLevel(channelTraffic);
-                
-                // Update display with real calculated data
-                updateElement('bay-traffic', `${bayLevel.level} (${bayTraffic})`, bayLevel.color);
-                updateElement('entrance-traffic', `${entranceLevel.level} (${entranceTraffic})`, entranceLevel.color);
-                updateElement('offshore-traffic', `${offshoreLevel.level} (${offshoreTraffic})`, offshoreLevel.color);
-                updateElement('channel-traffic', `${channelLevel.level} (${channelTraffic})`, channelLevel.color);
-                
-                console.log("✅ Maritime traffic density updated");
-                
-            } catch (error) {
-                console.error("❌ Cannot fetch traffic density:", error.message);
-                updateElement('bay-traffic', 'Offline');
-                updateElement('entrance-traffic', 'Offline');
-                updateElement('offshore-traffic', 'Offline');
-                updateElement('channel-traffic', 'Offline');
-            }
-        }
 
-        // Fetch real-time marine events calendar for San Diego area
-        async function fetchMarineEvents() {
-            try {
-                console.log("📅 Fetching marine events calendar...");
-                
-                // Try to fetch from multiple sources of San Diego marine events
-                const events = [];
-                
-                // Get current date for event filtering
-                const now = new Date();
-                const currentDate = now.toISOString().split('T')[0];
-                
-                // Since many marine event APIs require authentication, we'll use publicly available sources
-                // Try San Diego Bay Marine Events (if available via RSS or public API)
-                
-                // For now, let's try to get real events from available sources or generate realistic ones based on actual SD events
-                const sdMarineEvents = await fetchSDMarineCalendarData();
-                
-                if (sdMarineEvents && sdMarineEvents.length > 0) {
-                    events.push(...sdMarineEvents);
-                } else {
-                    // If APIs fail, generate realistic events based on actual San Diego maritime calendar patterns
-                    const realisticEvents = generateRealisticMarineEvents(now);
-                    events.push(...realisticEvents);
-                }
-                
-                // Sort events by date
-                events.sort((a, b) => new Date(a.date) - new Date(b.date));
-                
-                // Take only next 5 upcoming events
-                const upcomingEvents = events.slice(0, 5);
-                
-                // Update events display
-                const container = document.getElementById('events-container');
-                if (container) {
-                    let eventsHTML = '';
-                    for (const event of upcomingEvents) {
-                        const eventDate = new Date(event.date);
-                        const dateStr = eventDate.toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            timeZone: 'America/Los_Angeles'
-                        });
-                        
-                        const typeColors = {
-                            'Naval Exercise': '#60a5fa',
-                            'Regatta': '#10b981',
-                            'Race': '#f59e0b',
-                            'Port Operation': '#8b5cf6',
-                            'Security Exercise': '#ef4444'
-                        };
-                        
-                        const eventColor = typeColors[event.type] || '#cbd5e1';
-                        
-                        eventsHTML += `
-                            <div style="margin-bottom: 0.75rem; padding: 0.75rem; background: rgba(15, 23, 42, 0.4); border-left: 3px solid ${eventColor}; border-radius: 4px;">
-                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
-                                    <div style="font-weight: 600; color: #e2e8f0; font-size: 0.9rem;">${event.name}</div>
-                                    <div style="font-size: 0.7rem; color: #94a3b8;">${dateStr}</div>
-                                </div>
-                                <div style="font-weight: 500; color: ${eventColor}; margin-bottom: 0.25rem; font-size: 0.8rem;">${event.type}</div>
-                                <div style="font-size: 0.75rem; color: #cbd5e1; margin-bottom: 0.5rem; line-height: 1.3;">${event.description}</div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #94a3b8;">
-                                    <span>📍 ${event.location}</span>
-                                    <span>⏰ ${event.time}</span>
-                                </div>
-                            </div>
-                        `;
-                    }
-                    container.innerHTML = eventsHTML;
-                }
-                
-                console.log("✅ Marine events calendar updated");
-                
-            } catch (error) {
-                console.error("❌ Cannot fetch marine events:", error.message);
-                const container = document.getElementById('events-container');
-                if (container) {
-                    container.innerHTML = '<div class="data-value" style="color: #ef4444;">Events calendar unavailable</div>';
-                }
-            }
-        }
-        
-        // Attempt to fetch real San Diego marine calendar data
-        async function fetchSDMarineCalendarData() {
-            try {
-                // Try multiple sources for real marine events
-                // Since most require API keys, we'll return null to use realistic generation
-                return null;
-            } catch (error) {
-                return null;
-            }
-        }
-        
-        // Generate realistic marine events based on actual San Diego maritime patterns
-        function generateRealisticMarineEvents(currentDate) {
-            const events = [];
-            const eventTypes = [
-                {
-                    type: 'Naval Exercise',
-                    names: ['COMPTUEX Training', 'Fleet Week Prep', 'SEAL Team Exercise', 'Amphibious Operations'],
-                    locations: ['Training Areas', 'Naval Base San Diego', 'Coronado', 'Point Loma'],
-                    probability: 0.3
-                },
-                {
-                    type: 'Regatta',
-                    names: ['San Diego YC Regatta', 'Mission Bay Regatta', 'Sunset Series', 'Harbor Cup'],
-                    locations: ['Mission Bay', 'San Diego Bay', 'Harbor Island', 'Shelter Island'],
-                    probability: 0.25
-                },
-                {
-                    type: 'Race',
-                    names: ['Newport to Ensenada', 'Transpacific YC', 'Around Coronado Islands', 'Bay Series'],
-                    locations: ['San Diego Bay', 'Offshore', 'Coronado Islands', 'Point Loma'],
-                    probability: 0.2
-                },
-                {
-                    type: 'Port Operation',
-                    names: ['Container Ship Arrival', 'Cruise Ship Transit', 'Naval Vessel Movement', 'Coast Guard Exercise'],
-                    locations: ['Port of San Diego', 'B Street Pier', 'Naval Base', 'Harbor Entrance'],
-                    probability: 0.15
-                },
-                {
-                    type: 'Security Exercise',
-                    names: ['Harbor Security Drill', 'Port Security Assessment', 'Anti-Terrorism Exercise', 'MARSEC Drill'],
-                    locations: ['San Diego Harbor', 'Naval Facilities', 'Port Complex', 'Restricted Waters'],
-                    probability: 0.1
-                }
-            ];
-            
-            // Generate events for the next 30 days
-            for (let i = 0; i < 30; i++) {
-                const eventDate = new Date(currentDate);
-                eventDate.setDate(eventDate.getDate() + i);
-                
-                for (const eventType of eventTypes) {
-                    if (Math.random() < eventType.probability) {
-                        const name = eventType.names[Math.floor(Math.random() * eventType.names.length)];
-                        const location = eventType.locations[Math.floor(Math.random() * eventType.locations.length)];
-                        const hour = 8 + Math.floor(Math.random() * 10); // Events typically 8AM-6PM
-                        const minute = Math.floor(Math.random() * 2) * 30; // 00 or 30 minutes
-                        
-                        events.push({
-                            name: name,
-                            type: eventType.type,
-                            date: eventDate.toISOString().split('T')[0],
-                            time: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
-                            location: location,
-                            description: `Scheduled ${eventType.type.toLowerCase()} in San Diego maritime area. Monitor VHF channels and maintain safe distance.`
-                        });
-                    }
-                }
-            }
-            
-            return events;
-        }
-
-        // Generate realistic Local Notice to Mariners based on current conditions
+        // Fetch real-time USCG maritime notices from RSS feed
         async function fetchRealNotices() {
             try {
-                console.log("📋 Generating real-time Local Notices to Mariners...");
+                console.log("📋 Fetching real USCG maritime notices...");
                 
-                const now = new Date();
-                const pstTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+                // Use real USCG Sector San Diego RSS feed
+                const response = await fetch('https://public.govdelivery.com/topics/USDHSCG_436/feed.rss');
                 
-                // Generate realistic maritime notices for San Diego area
-                const notices = [
-                    {
-                        number: "11/25-" + (231 + Math.floor(Math.random() * 10)),
-                        title: "San Diego Harbor - Dredging Operations",
-                        description: "Dredging operations in vicinity of America's Cup Harbor entrance. Exercise caution and maintain safe distance.",
-                        location: "32°42'N, 117°13'W",
-                        effective: pstTime.toLocaleDateString('en-US', {timeZone: 'America/Los_Angeles'}) + " 0600 PST",
-                        expires: "Until further notice",
-                        authority: "USCG Sector San Diego"
-                    },
-                    {
-                        number: "11/25-" + (225 + Math.floor(Math.random() * 15)),
-                        title: "Point Loma Light Station - Navigation Aid",
-                        description: "Light Station operating normally. Report any outages to Sector San Diego immediately.",
-                        location: "Point Loma, CA",
-                        effective: "Continuous",
-                        expires: "Ongoing monitoring",
-                        authority: "USCG ANT Team San Diego"
-                    },
-                    {
-                        number: "11/25-" + (200 + Math.floor(Math.random() * 20)),
-                        title: "Maritime Domain Awareness - Security Zone",
-                        description: "Elevated security measures in effect for commercial vessel traffic. All vessels report to VTS San Diego.",
-                        location: "San Diego Bay approaches",
-                        effective: pstTime.toLocaleDateString('en-US', {timeZone: 'America/Los_Angeles'}),
-                        expires: "24 hours",
-                        authority: "Captain of the Port San Diego"
+                if (!response.ok) throw new Error('USCG notices RSS unavailable');
+                
+                const xml = await response.text();
+                
+                // Parse RSS XML for maritime notices
+                const notices = [];
+                const itemRegex = /<item>(.*?)<\/item>/gs;
+                const titleRegex = /<title><!\[CDATA\[(.*?)\]\]><\/title>/s;
+                const descRegex = /<description><!\[CDATA\[(.*?)\]\]><\/description>/s;
+                const pubDateRegex = /<pubDate>(.*?)<\/pubDate>/s;
+                
+                let match;
+                while ((match = itemRegex.exec(xml)) !== null && notices.length < 5) {
+                    const item = match[1];
+                    const titleMatch = titleRegex.exec(item);
+                    const descMatch = descRegex.exec(item);
+                    const dateMatch = pubDateRegex.exec(item);
+                    
+                    if (titleMatch && descMatch) {
+                        const title = titleMatch[1];
+                        const description = descMatch[1];
+                        const pubDate = dateMatch ? new Date(dateMatch[1]) : new Date();
+                        
+                        // Only include maritime safety notices (filter out non-maritime content)
+                        if (title.toLowerCase().includes('safety') || 
+                            title.toLowerCase().includes('hazard') ||
+                            title.toLowerCase().includes('diving') ||
+                            title.toLowerCase().includes('military') ||
+                            title.toLowerCase().includes('aton') ||
+                            description.toLowerCase().includes('mariner')) {
+                            
+                            notices.push({
+                                title: title,
+                                description: description.length > 200 ? description.substring(0, 200) + '...' : description,
+                                pubDate: pubDate.toLocaleDateString('en-US', {
+                                    timeZone: 'America/Los_Angeles',
+                                    month: 'short',
+                                    day: 'numeric'
+                                }),
+                                authority: "USCG Sector San Diego"
+                            });
+                        }
                     }
-                ];
-                
-                const noticesContainer = document.getElementById('notices-container');
-                if (noticesContainer) {
-                    let noticesHTML = '';
-                    for (let i = 0; i < notices.length; i++) {
-                        const notice = notices[i];
-                        noticesHTML += `
-                            <div style="margin-bottom: 0.75rem; padding: 0.75rem; background: rgba(15, 23, 42, 0.4); border-left: 3px solid #60a5fa; border-radius: 4px;">
-                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
-                                    <div style="font-weight: 600; color: #e2e8f0; font-size: 0.9rem;">LNM ${notice.number}</div>
-                                    <div style="font-size: 0.7rem; color: #94a3b8; text-align: right;">${notice.authority}</div>
-                                </div>
-                                <div style="font-weight: 600; color: #60a5fa; margin-bottom: 0.25rem; font-size: 0.85rem;">${notice.title}</div>
-                                <div style="font-size: 0.75rem; color: #cbd5e1; margin-bottom: 0.5rem; line-height: 1.3;">${notice.description}</div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #94a3b8;">
-                                    <span>📍 ${notice.location}</span>
-                                    <span>⏱️ ${notice.effective}</span>
-                                </div>
-                            </div>
-                        `;
-                    }
-                    noticesContainer.innerHTML = noticesHTML;
                 }
                 
-                console.log("✅ Real-time maritime notices updated");
-                
-            } catch (error) {
-                console.error("❌ Cannot generate maritime notices:", error.message);
+                // Update notices display
                 const noticesContainer = document.getElementById('notices-container');
                 if (noticesContainer) {
-                    noticesContainer.innerHTML = '<div class="data-value" style="color: #ef4444;">Notice system unavailable</div>';
+                    if (notices.length > 0) {
+                        let noticesHTML = '';
+                        for (const notice of notices) {
+                            noticesHTML += `
+                                <div style="margin-bottom: 0.75rem; padding: 0.75rem; background: rgba(15, 23, 42, 0.4); border-left: 3px solid #60a5fa; border-radius: 4px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                        <div style="font-weight: 600; color: #60a5fa; font-size: 0.85rem;">${notice.title}</div>
+                                        <div style="font-size: 0.7rem; color: #94a3b8;">${notice.pubDate}</div>
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: #cbd5e1; margin-bottom: 0.5rem; line-height: 1.3;">${notice.description}</div>
+                                    <div style="font-size: 0.7rem; color: #94a3b8;">
+                                        <span>📍 ${notice.authority}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        noticesContainer.innerHTML = noticesHTML;
+                    } else {
+                        noticesContainer.innerHTML = '<div class="data-value">No current maritime safety notices</div>';
+                    }
+                }
+                
+                console.log("✅ Real USCG maritime notices updated");
+                
+            } catch (error) {
+                console.error("❌ Cannot fetch USCG notices:", error.message);
+                const noticesContainer = document.getElementById('notices-container');
+                if (noticesContainer) {
+                    noticesContainer.innerHTML = '<div class="data-value" style="color: #ef4444;">USCG notices unavailable</div>';
                 }
             }
         }
@@ -1355,8 +1107,6 @@
                 fetchRealTideData(), 
                 fetchRealSeaData(),
                 fetchRealAstronomicalData(),
-                fetchTrafficDensity(),
-                fetchMarineEvents(),
                 fetchRealNotices(),
                 fetchRealWeatherAlerts()
             ]);

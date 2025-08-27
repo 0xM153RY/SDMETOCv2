@@ -9,15 +9,13 @@
 
 ## 📡 Real-Time Data Sources
 
-### ✅ Fully Operational APIs
+### ✅ 100% Real-Time APIs (No Simulations)
 - **🌤️ NOAA Weather** - Live conditions from San Diego Airport (KSAN)
 - **🌊 NOAA Tides** - Real tide predictions for San Diego Bay (Station 9410170)  
 - **⚓ Sea Conditions** - Live buoy data from Point Loma Buoy (46235)
-- **🚢 Traffic Density** - Real-time maritime congestion analysis based on time, weather, and operational patterns
-- **📅 Marine Events** - Live calendar of naval exercises, regattas, races, and port operations
-- **📋 Maritime Notices** - Current USCG Local Notices to Mariners
+- **📋 USCG Maritime Notices** - Real-time RSS feed from USCG Sector San Diego
 - **⚠️ Weather Alerts** - Active marine weather warnings for San Diego County
-- **🌙 Astronomical** - Real sunrise/sunset/moon phase calculations
+- **🌙 Astronomical** - Real sunrise/sunset API + calculated moon phases
 
 ## 🎯 Features
 
@@ -51,15 +49,14 @@ npx serve .
 
 ## 📊 Data Accuracy & Updates
 
-| Data Source | Update Frequency | Accuracy |
-|-------------|------------------|----------|
-| Weather | Every 1-10 minutes | NOAA Official |
-| Tides | Real-time predictions | NOAA Official |
-| Sea Conditions | Every 10-60 minutes | Live Buoy |
-| Traffic Density | Every 30 seconds | Real-time Analysis |
-| Marine Events | Daily | Generated from Official Sources |
-| Weather Alerts | Real-time | NOAA Official |
-| Astronomical | Calculated | Precise Algorithms |
+| Data Source | Update Frequency | Source |
+|-------------|------------------|---------|
+| Weather | Every 1-10 minutes | NOAA Official API |
+| Tides | Real-time predictions | NOAA Official API |
+| Sea Conditions | Every 10-60 minutes | Live Buoy Data |
+| USCG Notices | Real-time | Official RSS Feed |
+| Weather Alerts | Real-time | NOAA Official API |
+| Astronomical | Daily | Sunrise-Sunset.org API |
 
 ## 🛡️ For the SWCC Community
 
@@ -67,10 +64,8 @@ This dashboard was created specifically to support Naval Special Warfare operati
 
 - **Pre-mission Planning**: Current and forecasted conditions
 - **Real-time Monitoring**: Live environmental data during operations  
-- **Safety Intelligence**: Active weather warnings and maritime notices
+- **Safety Intelligence**: Active weather warnings and USCG maritime notices
 - **Tactical Advantage**: Tide states, moon illumination, and visibility conditions
-- **Maritime Intelligence**: Traffic density analysis and marine event awareness
-- **Operational Security**: Real-time awareness of naval exercises and security events
 
 *Dedicated to the warriors who operate in the maritime domain.*
 
