@@ -1245,11 +1245,25 @@
                 const twoDaysAgo = new Date(now.getTime() - (48 * 60 * 60 * 1000));
                 const startTime = twoDaysAgo.toISOString();
                 
-                // San Diego coordinates: 32.7157, -117.1611
-                const earthquakeUrl = getCorsProxyUrl(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${startTime}&latitude=32.7157&longitude=-117.1611&maxradiuskm=100&minmagnitude=2.0&orderby=time`);
-                const response = await fetch(earthquakeUrl);
+                // Try alternative USGS endpoint or different proxy for earthquake data
+                let earthquakeUrl, response;
                 
-                if (!response.ok) throw new Error('USGS earthquake API unavailable');
+                try {
+                    // Primary: Use standard USGS API with CORS proxy
+                    earthquakeUrl = getCorsProxyUrl(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${startTime}&latitude=32.7157&longitude=-117.1611&maxradiuskm=100&minmagnitude=2.0&orderby=time`);
+                    console.log('EARTHQUAKE URL (Primary):', earthquakeUrl);
+                    response = await fetch(earthquakeUrl);
+                    
+                    if (!response.ok) throw new Error('Primary earthquake URL failed');
+                } catch (primaryError) {
+                    // Fallback: Try allorigins as backup for earthquake data specifically
+                    console.log('Primary earthquake fetch failed, trying backup...');
+                    earthquakeUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${startTime}&latitude=32.7157&longitude=-117.1611&maxradiuskm=100&minmagnitude=2.0&orderby=time`)}`;
+                    console.log('EARTHQUAKE URL (Backup):', earthquakeUrl);
+                    response = await fetch(earthquakeUrl);
+                    
+                    if (!response.ok) throw new Error('Backup earthquake URL also failed');
+                }
                 
                 const data = await response.json();
                 const earthquakes = data.features || [];
