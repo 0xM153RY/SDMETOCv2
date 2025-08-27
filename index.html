@@ -889,7 +889,10 @@
         // Fetch enhanced real sea conditions from NOAA buoy with spectral wave data
         async function fetchRealSeaData() {
             try {
-                console.log("🌊 Fetching enhanced sea conditions from NOAA Buoy 46235...");
+                console.log("🌊 Fetching enhanced sea conditions from NOAA Buoy 46235 (Imperial Beach Nearshore)...");
+                console.log("📍 URLs being fetched:");
+                console.log("   .txt: https://www.ndbc.noaa.gov/data/realtime2/46235.txt");
+                console.log("   .spec: https://www.ndbc.noaa.gov/data/realtime2/46235.spec");
                 
                 // Fetch standard meteorological data
                 const [metResponse, specResponse] = await Promise.allSettled([
@@ -911,11 +914,15 @@
                     for (let i = 2; i < lines.length; i++) {
                         if (lines[i].trim() && !lines[i].startsWith('#')) {
                             const data = lines[i].split(/\s+/);
+                            console.log(`📊 Line ${i}: ${lines[i].slice(0, 100)}... (${data.length} fields)`);
+                            
                             // Check if wave height data is available (not "MM")
                             if (data.length > 8 && data[8] !== 'MM' && !isNaN(parseFloat(data[8]))) {
                                 metData = data;
                                 console.log(`📊 Found valid buoy data at line ${i}: wave height ${data[8]}m`);
                                 break;
+                            } else {
+                                console.log(`📊 Line ${i} skipped: length=${data.length}, WVHT=${data[8] || 'undefined'}`);
                             }
                         }
                     }
