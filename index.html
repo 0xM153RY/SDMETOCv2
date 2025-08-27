@@ -609,6 +609,19 @@
             }) + ' PST';
         }
 
+        // Reliable 24-hour time formatter (replaces unreliable toLocaleTimeString)
+        function formatTime24Hour(date, timezone = 'America/Los_Angeles') {
+            // Convert to specified timezone
+            const options = { timeZone: timezone };
+            const localDate = new Date(date.toLocaleString('en-US', options));
+            
+            // Extract hours and minutes manually for reliable 24-hour format
+            const hours = localDate.getHours().toString().padStart(2, '0');
+            const minutes = localDate.getMinutes().toString().padStart(2, '0');
+            
+            return `${hours}:${minutes}`;
+        }
+
         // Helper function to update elements
         function updateElement(id, value, color) {
             console.log(`🔧 updateElement called: id=${id}, value=${value}`);
@@ -852,22 +865,12 @@
                     }
                     
                     if (nextHigh) {
-                        const highTime = new Date(nextHigh.t).toLocaleTimeString('en-US', {
-                            timeZone: 'America/Los_Angeles',
-                            hour12: false, 
-                            hour: '2-digit', 
-                            minute: '2-digit'
-                        });
+                        const highTime = formatTime24Hour(new Date(nextHigh.t));
                         updateElement('high-tide', highTime + ' PST - ' + parseFloat(nextHigh.v).toFixed(1) + ' ft');
                     }
                     
                     if (nextLow) {
-                        const lowTime = new Date(nextLow.t).toLocaleTimeString('en-US', {
-                            timeZone: 'America/Los_Angeles',
-                            hour12: false, 
-                            hour: '2-digit', 
-                            minute: '2-digit'
-                        });
+                        const lowTime = formatTime24Hour(new Date(nextLow.t));
                         updateElement('low-tide', lowTime + ' PST - ' + parseFloat(nextLow.v).toFixed(1) + ' ft');
                     }
                     
@@ -896,18 +899,7 @@
                 console.log("🌊 DEBUGGING: Starting fetchRealSeaData function...");
                 console.log("🌊 DEBUGGING: Current protocol:", window.location.protocol);
                 
-                // If running from file://, skip API calls and use fallback data immediately
-                if (window.location.protocol === 'file:') {
-                    console.log("⚠️ File protocol detected - using fallback data immediately");
-                    updateElement('wave-height', '2.3 ft');
-                    updateElement('wave-period', '8 sec');
-                    updateElement('water-temp', '71°F');
-                    updateElement('swell-height', '1.8 ft');
-                    updateElement('swell-period', '12 sec');
-                    updateElement('swell-direction', 'WSW');
-                    console.log("✅ Fallback sea data applied");
-                    return;
-                }
+                // Always attempt real NOAA data first - no fallbacks allowed
                 
                 console.log("🌊 DEBUGGING: Fetching enhanced sea conditions from NOAA Buoy 46235 (Imperial Beach Nearshore)...");
                 console.log("📍 DEBUGGING: URLs being fetched:");
@@ -1054,25 +1046,15 @@
                 
             } catch (error) {
                 console.error("❌ Cannot fetch enhanced sea data:", error.message);
+                console.log("⚠️ Real NOAA data unavailable - showing data unavailable status");
                 
-                // Check if this is a CORS issue (common with file:// URLs)
-                if (error.message.includes('CORS') || error.message.includes('fetch') || window.location.protocol === 'file:') {
-                    console.log("⚠️ CORS issue detected - using fallback data for local testing");
-                    // Use fallback data for local file testing
-                    updateElement('wave-height', '2.3 ft');
-                    updateElement('wave-period', '8 sec');
-                    updateElement('water-temp', '71°F');
-                    updateElement('swell-height', '1.8 ft');
-                    updateElement('swell-period', '12 sec');
-                    updateElement('swell-direction', 'WSW');
-                } else {
-                    updateElement('wave-height', 'Offline');
-                    updateElement('wave-period', 'Offline');
-                    updateElement('water-temp', 'Offline');
-                    updateElement('swell-height', 'Offline');
-                    updateElement('swell-period', 'Offline');
-                    updateElement('swell-direction', 'Offline');
-                }
+                // Only show "Unavailable" - no fallback or simulated data allowed
+                updateElement('wave-height', 'Unavailable');
+                updateElement('wave-period', 'Unavailable');
+                updateElement('water-temp', 'Unavailable');
+                updateElement('swell-height', 'Unavailable');
+                updateElement('swell-period', 'Unavailable');
+                updateElement('swell-direction', 'Unavailable');
             }
         }
 
