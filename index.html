@@ -1281,12 +1281,18 @@
                             month: 'short',
                             day: 'numeric',
                             hour: '2-digit',
-                            minute: '2-digit'
+                            minute: '2-digit',
+                            hour12: false
                         }));
                     } else if (text.toLowerCase().includes('warning') || text.toLowerCase().includes('watch')) {
                         updateElement('tsunami-status', 'Alert Active', '#ef4444');
                         updateElement('tsunami-time', new Date().toLocaleString('en-US', {
-                            timeZone: 'America/Los_Angeles'
+                            timeZone: 'America/Los_Angeles',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
                         }));
                     }
                 } else {
@@ -1302,7 +1308,8 @@
                     month: 'short',
                     day: 'numeric',
                     hour: '2-digit',
-                    minute: '2-digit'
+                    minute: '2-digit',
+                    hour12: false
                 }));
             }
         }
@@ -1439,7 +1446,12 @@
                 } else {
                     updateElement('alert-title', 'No Active Alerts');
                     updateElement('alert-desc', 'No weather warnings currently issued for San Diego area');
-                    updateElement('alert-time', 'Last checked: ' + new Date().toLocaleTimeString());
+                    updateElement('alert-time', 'Last checked: ' + new Date().toLocaleTimeString('en-US', {
+                        timeZone: 'America/Los_Angeles',
+                        hour12: false,
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    }) + ' PST');
                     document.getElementById('alert-title').style.color = '#10b981';
                 }
                 
