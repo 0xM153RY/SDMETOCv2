@@ -947,24 +947,45 @@
                 
                 // Update standard wave data
                 if (metData) {
+                    console.log(`📊 Processing buoy data: ${metData.join(' | ')}`);
+                    
                     // NOAA buoy format: YY MM DD hh mm WDIR WSPD GST WVHT DPD APD MWD PRES ATMP WTMP DEWP VIS
                     const waveHeight = parseFloat(metData[8]); // WVHT in meters
                     const dominantPeriod = parseFloat(metData[9]); // DPD in seconds
                     const waterTemp = parseFloat(metData[14]); // WTMP in Celsius
                     
+                    console.log(`📊 Parsed values: Wave height: ${waveHeight}m, Period: ${dominantPeriod}s, Temp: ${waterTemp}°C`);
+                    
                     if (!isNaN(waveHeight) && waveHeight > 0) {
                         const waveHeightFt = (waveHeight * 3.28084).toFixed(1);
                         updateElement('wave-height', waveHeightFt + ' ft');
+                        console.log(`✅ Updated wave height: ${waveHeightFt} ft`);
+                    } else {
+                        updateElement('wave-height', 'No Data');
+                        console.log(`❌ Invalid wave height: ${waveHeight}`);
                     }
                     
                     if (!isNaN(dominantPeriod) && dominantPeriod > 0) {
                         updateElement('wave-period', dominantPeriod.toFixed(0) + ' sec');
+                        console.log(`✅ Updated wave period: ${dominantPeriod} sec`);
+                    } else {
+                        updateElement('wave-period', 'No Data');
+                        console.log(`❌ Invalid wave period: ${dominantPeriod}`);
                     }
                     
                     if (!isNaN(waterTemp) && waterTemp > -10) {
                         const waterTempF = Math.round(waterTemp * 9/5 + 32);
                         updateElement('water-temp', waterTempF + '°F');
+                        console.log(`✅ Updated water temp: ${waterTempF}°F`);
+                    } else {
+                        updateElement('water-temp', 'No Data');
+                        console.log(`❌ Invalid water temp: ${waterTemp}`);
                     }
+                } else {
+                    console.log("❌ No valid meteorological data found");
+                    updateElement('wave-height', 'No Data');
+                    updateElement('wave-period', 'No Data');
+                    updateElement('water-temp', 'No Data');
                 }
                 
                 // Update swell data from spectral analysis
