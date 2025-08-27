@@ -629,16 +629,22 @@
             }
         }
 
-        // Helper function to update elements
+        // Helper function to update elements with null checks
         function updateElement(id, value, color) {
-            var el = document.getElementById(id);
-            if (el) {
-                el.textContent = value;
-                if (color) el.style.color = color;
-                el.classList.add('highlight-update');
-                setTimeout(function() {
-                    el.classList.remove('highlight-update');
-                }, 2000);
+            try {
+                var el = document.getElementById(id);
+                if (el) {
+                    el.textContent = value;
+                    if (color) el.style.color = color;
+                    el.classList.add('highlight-update');
+                    setTimeout(function() {
+                        if (el && el.classList) {
+                            el.classList.remove('highlight-update');
+                        }
+                    }, 2000);
+                }
+            } catch (error) {
+                // Silently handle DOM access errors
             }
         }
 
@@ -739,7 +745,11 @@
                     
                     const forecastEl = document.getElementById('weather-forecast');
                     if (forecastEl) {
-                        forecastEl.innerHTML = forecastHTML;
+                        try {
+                            forecastEl.innerHTML = forecastHTML;
+                        } catch (error) {
+                            // Handle forecast display error
+                        }
                     }
                 }
                 
@@ -1301,7 +1311,11 @@
             } catch (error) {
                 const container = document.getElementById('earthquake-container');
                 if (container) {
-                    container.innerHTML = '<div class="data-value" style="color: #ef4444;">USGS data unavailable</div>';
+                    try {
+                        container.innerHTML = '<div class="data-value" style="color: #ef4444;">USGS data unavailable</div>';
+                    } catch (error) {
+                        // Handle container update error
+                    }
                 }
             }
         }
@@ -1788,8 +1802,9 @@
             }
         }
 
-        // Update all real-time data
+        // Update all real-time data with comprehensive error handling
         async function updateAllRealTime() {
+            try {
             updateTime();
             
             // Attempt to fetch real data from all sources
@@ -1806,16 +1821,23 @@
                 fetchRealAirQuality(),
                 fetchRealWeatherAlerts()
             ]);
+            
+            } catch (error) {
+                // Handle any unexpected errors in data update cycle
+            }
         }
 
-        // Initialize the system
-        
-        // Start real-time data updates immediately and then every 30 seconds
-        setTimeout(updateAllRealTime, 1000); // Start after 1 second
-        setInterval(updateAllRealTime, 30000); // Every 30 seconds
-        
-        // Update time every second
-        setInterval(updateTime, 1000);
+        // Initialize the system with error handling
+        try {
+            // Start real-time data updates immediately and then every 30 seconds
+            setTimeout(updateAllRealTime, 1000); // Start after 1 second
+            setInterval(updateAllRealTime, 30000); // Every 30 seconds
+            
+            // Update time every second
+            setInterval(updateTime, 1000);
+        } catch (error) {
+            // Handle initialization errors silently
+        }
     </script>
 </body>
 </html>
