@@ -941,22 +941,37 @@
                     const lines = text.split('\n');
                     
                     console.log(`📊 NOAA buoy .txt file has ${lines.length} lines`);
+                    console.log(`📊 First few lines of data:`);
+                    for (let i = 0; i < Math.min(5, lines.length); i++) {
+                        console.log(`📊 Line ${i}: ${lines[i]}`);
+                    }
                     
                     // Find the first line with valid buoy data (skip headers and missing data)
-                    for (let i = 2; i < lines.length; i++) {
+                    for (let i = 2; i < Math.min(lines.length, 20); i++) {
                         if (lines[i].trim() && !lines[i].startsWith('#')) {
                             const data = lines[i].split(/\s+/);
-                            console.log(`📊 Line ${i}: ${lines[i].slice(0, 100)}... (${data.length} fields)`);
+                            console.log(`📊 Line ${i}: ${lines[i].slice(0, 150)}`);
+                            console.log(`📊 Split data (${data.length} fields):`, data.slice(0, 15));
                             
                             // Check if wave height data is available (not "MM")
-                            if (data.length > 8 && data[8] !== 'MM' && !isNaN(parseFloat(data[8]))) {
-                                metData = data;
-                                console.log(`📊 Found valid buoy data at line ${i}: wave height ${data[8]}m`);
-                                break;
+                            if (data.length > 8) {
+                                console.log(`📊 Field 8 (WVHT): "${data[8]}", parsed: ${parseFloat(data[8])}, isNaN: ${isNaN(parseFloat(data[8]))}`);
+                                
+                                if (data[8] !== 'MM' && !isNaN(parseFloat(data[8]))) {
+                                    metData = data;
+                                    console.log(`✅ FOUND valid buoy data at line ${i}: wave height ${data[8]}m`);
+                                    break;
+                                } else {
+                                    console.log(`⚠️ Line ${i} skipped: WVHT="${data[8]}" (MM or NaN)`);
+                                }
                             } else {
-                                console.log(`📊 Line ${i} skipped: length=${data.length}, WVHT=${data[8] || 'undefined'}`);
+                                console.log(`⚠️ Line ${i} skipped: insufficient fields (${data.length})`);
                             }
                         }
+                    }
+                    
+                    if (!metData) {
+                        console.log(`❌ No valid meteorological data found in ${lines.length} lines`);
                     }
                 } else {
                     console.log("❌ Failed to fetch .txt file:", metResponse.status === 'fulfilled' ? metResponse.value.status : 'Promise rejected');
@@ -985,43 +1000,47 @@
                 }
                 
                 // Update standard wave data
-                if (metData) {
-                    console.log(`📊 Processing buoy data: ${metData.join(' | ')}`);
+                if (metData && metData.length > 14) {
+                    console.log(`📊 Processing buoy data (${metData.length} fields): ${metData.join(' | ')}`);
                     
                     // NOAA buoy format: YY MM DD hh mm WDIR WSPD GST WVHT DPD APD MWD PRES ATMP WTMP DEWP VIS
                     const waveHeight = parseFloat(metData[8]); // WVHT in meters
                     const dominantPeriod = parseFloat(metData[9]); // DPD in seconds
                     const waterTemp = parseFloat(metData[14]); // WTMP in Celsius
                     
+                    console.log(`📊 Raw field values: WVHT="${metData[8]}", DPD="${metData[9]}", WTMP="${metData[14]}"`);
                     console.log(`📊 Parsed values: Wave height: ${waveHeight}m, Period: ${dominantPeriod}s, Temp: ${waterTemp}°C`);
                     
-                    if (!isNaN(waveHeight) && waveHeight > 0) {
+                    // Wave Height
+                    if (!isNaN(waveHeight) && waveHeight >= 0) {
                         const waveHeightFt = (waveHeight * 3.28084).toFixed(1);
                         updateElement('wave-height', waveHeightFt + ' ft');
                         console.log(`✅ Updated wave height: ${waveHeightFt} ft`);
                     } else {
                         updateElement('wave-height', 'No Data');
-                        console.log(`❌ Invalid wave height: ${waveHeight}`);
+                        console.log(`❌ Invalid wave height: "${metData[8]}" -> ${waveHeight}`);
                     }
                     
+                    // Wave Period
                     if (!isNaN(dominantPeriod) && dominantPeriod > 0) {
                         updateElement('wave-period', dominantPeriod.toFixed(0) + ' sec');
                         console.log(`✅ Updated wave period: ${dominantPeriod} sec`);
                     } else {
                         updateElement('wave-period', 'No Data');
-                        console.log(`❌ Invalid wave period: ${dominantPeriod}`);
+                        console.log(`❌ Invalid wave period: "${metData[9]}" -> ${dominantPeriod}`);
                     }
                     
-                    if (!isNaN(waterTemp) && waterTemp > -10) {
+                    // Water Temperature
+                    if (!isNaN(waterTemp) && waterTemp > -10 && waterTemp < 50) {
                         const waterTempF = Math.round(waterTemp * 9/5 + 32);
                         updateElement('water-temp', waterTempF + '°F');
-                        console.log(`✅ Updated water temp: ${waterTempF}°F`);
+                        console.log(`✅ Updated water temp: ${waterTempF}°F (${waterTemp}°C)`);
                     } else {
                         updateElement('water-temp', 'No Data');
-                        console.log(`❌ Invalid water temp: ${waterTemp}`);
+                        console.log(`❌ Invalid water temp: "${metData[14]}" -> ${waterTemp}°C`);
                     }
                 } else {
-                    console.log("❌ No valid meteorological data found");
+                    console.log(`❌ Invalid meteorological data: metData=${!!metData}, length=${metData?.length || 0}`);
                     updateElement('wave-height', 'No Data');
                     updateElement('wave-period', 'No Data');
                     updateElement('water-temp', 'No Data');
