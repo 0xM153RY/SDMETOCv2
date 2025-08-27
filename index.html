@@ -395,7 +395,7 @@
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">🌊 Sea Conditions</div>
-                    <div class="card-subtitle">Point Loma Buoy 46235</div>
+                    <div class="card-subtitle" id="buoy-source">NOAA Buoy Data</div>
                 </div>
                 <div class="card-content">
                     <div class="data-row">
@@ -611,14 +611,18 @@
 
         // Reliable 24-hour time formatter (replaces unreliable toLocaleTimeString)
         function formatTime24Hour(date, timezone = 'America/Los_Angeles') {
-            // Convert to specified timezone
-            const options = { timeZone: timezone };
-            const localDate = new Date(date.toLocaleString('en-US', options));
+            // Create a new date object and manually adjust for PST timezone
+            const utcTime = new Date(date);
             
-            // Extract hours and minutes manually for reliable 24-hour format
-            const hours = localDate.getHours().toString().padStart(2, '0');
-            const minutes = localDate.getMinutes().toString().padStart(2, '0');
+            // Convert UTC to PST (UTC-8) or PDT (UTC-7) - approximate with UTC-8
+            const pstOffset = -8 * 60; // PST is UTC-8 (in minutes)
+            const localTime = new Date(utcTime.getTime() + (pstOffset * 60 * 1000));
             
+            // Extract hours and minutes manually for guaranteed 24-hour format
+            const hours = localTime.getUTCHours().toString().padStart(2, '0');
+            const minutes = localTime.getUTCMinutes().toString().padStart(2, '0');
+            
+            console.log(`🕒 formatTime24Hour: ${date} -> ${hours}:${minutes}`);
             return `${hours}:${minutes}`;
         }
 
@@ -900,17 +904,33 @@
                 console.log("🌊 DEBUGGING: Current protocol:", window.location.protocol);
                 
                 // Always attempt real NOAA data first - no fallbacks allowed
+                // Primary: Buoy 46235 (Imperial Beach Nearshore), Backup: Buoy 46232 (Point Loma South)
                 
-                console.log("🌊 DEBUGGING: Fetching enhanced sea conditions from NOAA Buoy 46235 (Imperial Beach Nearshore)...");
-                console.log("📍 DEBUGGING: URLs being fetched:");
-                console.log("   .txt: https://www.ndbc.noaa.gov/data/realtime2/46235.txt");
-                console.log("   .spec: https://www.ndbc.noaa.gov/data/realtime2/46235.spec");
+                console.log("🌊 DEBUGGING: Fetching enhanced sea conditions...");
+                console.log("📍 DEBUGGING: Trying primary buoy 46235 (Imperial Beach Nearshore)");
                 
-                // Fetch standard meteorological data
-                const [metResponse, specResponse] = await Promise.allSettled([
+                // Try primary buoy 46235 first
+                let [metResponse, specResponse] = await Promise.allSettled([
                     fetch('https://www.ndbc.noaa.gov/data/realtime2/46235.txt'),
                     fetch('https://www.ndbc.noaa.gov/data/realtime2/46235.spec')
                 ]);
+                
+                let currentBuoy = '46235 (Imperial Beach Nearshore)';
+                
+                // If primary buoy fails, try backup buoy 46232
+                if (metResponse.status !== 'fulfilled' || !metResponse.value.ok) {
+                    console.log("⚠️ Primary buoy 46235 unavailable - trying backup buoy 46232 (Point Loma South)");
+                    [metResponse, specResponse] = await Promise.allSettled([
+                        fetch('https://www.ndbc.noaa.gov/data/realtime2/46232.txt'),
+                        fetch('https://www.ndbc.noaa.gov/data/realtime2/46232.spec')
+                    ]);
+                    currentBuoy = '46232 (Point Loma South)';
+                }
+                
+                console.log(`📊 Using buoy data from: ${currentBuoy}`);
+                
+                // Update the buoy source display
+                updateElement('buoy-source', currentBuoy);
                 
                 let metData = null;
                 let specData = null;
