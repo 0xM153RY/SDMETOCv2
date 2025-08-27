@@ -581,7 +581,6 @@
     </div>
 
     <script>
-        console.log("🚀 METOC Dashboard Starting...");
 
         // Update current time in PST timezone
         function updateTime() {
@@ -622,13 +621,11 @@
             const hours = localTime.getUTCHours().toString().padStart(2, '0');
             const minutes = localTime.getUTCMinutes().toString().padStart(2, '0');
             
-            console.log(`🕒 formatTime24Hour: ${date} -> ${hours}:${minutes}`);
             return `${hours}:${minutes}`;
         }
 
         // Helper function to update elements
         function updateElement(id, value, color) {
-            console.log(`🔧 updateElement called: id=${id}, value=${value}`);
             var el = document.getElementById(id);
             if (el) {
                 el.textContent = value;
@@ -637,19 +634,14 @@
                 setTimeout(function() {
                     el.classList.remove('highlight-update');
                 }, 2000);
-                console.log(`✅ Element ${id} updated successfully`);
-            } else {
-                console.log(`❌ Element ${id} not found in DOM`);
             }
         }
 
         // Fetch real weather data from NOAA
         async function fetchRealWeatherData() {
             try {
-                console.log("🌤️ Fetching real weather data from NOAA...");
                 
                 const weatherUrl = getCorsProxyUrl('https://api.weather.gov/stations/KSAN/observations/latest');
-                console.log("🌤️ Weather URL:", weatherUrl);
                 const response = await fetch(weatherUrl, {
                     headers: {
                         'User-Agent': 'METOC-Dashboard/1.0'
@@ -693,10 +685,8 @@
                     updateElement('temp-display', tempF + '°F');
                 }
                 
-                console.log("✅ Real weather data updated");
                 
             } catch (error) {
-                console.error("❌ Cannot fetch real weather data:", error.message);
                 updateElement('temp-display', 'Offline');
                 updateElement('wind-speed', 'N/A');
             }
@@ -705,10 +695,8 @@
         // Fetch weather forecast
         async function fetchWeatherForecast() {
             try {
-                console.log("📅 Fetching 12-hour weather forecast...");
-                
+                    
                 const forecastUrl = getCorsProxyUrl('https://api.weather.gov/gridpoints/SGX/64,16/forecast/hourly');
-                console.log("🌤️ Forecast URL:", forecastUrl);
                 const response = await fetch(forecastUrl, {
                     headers: {
                         'User-Agent': 'METOC-Dashboard/1.0'
@@ -750,10 +738,8 @@
                     }
                 }
                 
-                console.log("✅ Weather forecast updated");
                 
             } catch (error) {
-                console.error("❌ Cannot fetch weather forecast:", error.message);
                 updateElement('weather-forecast', 'Forecast unavailable');
             }
         }
@@ -799,7 +785,6 @@
         // Fetch real tide data from NOAA
         async function fetchRealTideData() {
             try {
-                console.log("🌊 Fetching real tide data from NOAA...");
                 
                 // Get current Pacific time for date range
                 const now = new Date();
@@ -811,8 +796,6 @@
                 const predUrl = getCorsProxyUrl(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${today}&end_date=${tomorrow}&station=9410170&product=predictions&datum=mllw&units=english&time_zone=lst_ldt&format=json&interval=hilo`);
                 const currentUrl = getCorsProxyUrl(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=9410170&product=water_level&datum=mllw&units=english&time_zone=lst_ldt&format=json`);
                 
-                console.log("🌊 Tide prediction URL:", predUrl);
-                console.log("🌊 Current level URL:", currentUrl);
                 
                 const [predResponse, currentResponse] = await Promise.allSettled([
                     fetch(predUrl),
@@ -897,10 +880,8 @@
                     }
                 }
                 
-                console.log("✅ Real tide data updated");
                 
             } catch (error) {
-                console.error("❌ Cannot fetch real tide data:", error.message);
                 updateElement('current-tide', 'Offline');
                 updateElement('high-tide', 'N/A');
                 updateElement('low-tide', 'N/A');
@@ -926,23 +907,12 @@
         // Fetch enhanced real sea conditions from NOAA buoy with spectral wave data
         async function fetchRealSeaData() {
             try {
-                console.log("🌊 DEBUGGING: Starting fetchRealSeaData function...");
-                console.log("🌊 DEBUGGING: Current protocol:", window.location.protocol);
-                console.log("🌊 DEBUGGING: Current hostname:", window.location.hostname);
-                
                 // Always attempt real NOAA data first - no fallbacks allowed
                 // Primary: Buoy 46235 (Imperial Beach Nearshore), Backup: Buoy 46232 (Point Loma South)
-                
-                console.log("🌊 DEBUGGING: Fetching enhanced sea conditions...");
-                console.log("📍 DEBUGGING: Trying primary buoy 46235 (Imperial Beach Nearshore)");
                 
                 // Prepare URLs with CORS proxy if needed
                 const buoy46235TxtUrl = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46235.txt');
                 const buoy46235SpecUrl = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46235.spec');
-                
-                console.log("📍 DEBUGGING: Primary URLs:");
-                console.log("   .txt:", buoy46235TxtUrl);
-                console.log("   .spec:", buoy46235SpecUrl);
                 
                 // Try primary buoy 46235 first
                 let [metResponse, specResponse] = await Promise.allSettled([
@@ -954,14 +924,8 @@
                 
                 // If primary buoy fails, try backup buoy 46232
                 if (metResponse.status !== 'fulfilled' || !metResponse.value.ok) {
-                    console.log("⚠️ Primary buoy 46235 unavailable - trying backup buoy 46232 (Point Loma South)");
-                    
                     const buoy46232TxtUrl = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46232.txt');
                     const buoy46232SpecUrl = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46232.spec');
-                    
-                    console.log("📍 DEBUGGING: Backup URLs:");
-                    console.log("   .txt:", buoy46232TxtUrl);
-                    console.log("   .spec:", buoy46232SpecUrl);
                     
                     [metResponse, specResponse] = await Promise.allSettled([
                         fetch(buoy46232TxtUrl),
@@ -969,8 +933,6 @@
                     ]);
                     currentBuoy = '46232 (Point Loma South)';
                 }
-                
-                console.log(`📊 Using buoy data from: ${currentBuoy}`);
                 
                 // Update the buoy source display
                 updateElement('buoy-source', currentBuoy);
@@ -983,41 +945,20 @@
                     const text = await metResponse.value.text();
                     const lines = text.split('\n');
                     
-                    console.log(`📊 NOAA buoy .txt file has ${lines.length} lines`);
-                    console.log(`📊 First few lines of data:`);
-                    for (let i = 0; i < Math.min(5, lines.length); i++) {
-                        console.log(`📊 Line ${i}: ${lines[i]}`);
-                    }
-                    
                     // Find the first line with valid buoy data (skip headers and missing data)
                     for (let i = 2; i < Math.min(lines.length, 20); i++) {
                         if (lines[i].trim() && !lines[i].startsWith('#')) {
                             const data = lines[i].split(/\s+/);
-                            console.log(`📊 Line ${i}: ${lines[i].slice(0, 150)}`);
-                            console.log(`📊 Split data (${data.length} fields):`, data.slice(0, 15));
                             
                             // Check if wave height data is available (not "MM")
                             if (data.length > 8) {
-                                console.log(`📊 Field 8 (WVHT): "${data[8]}", parsed: ${parseFloat(data[8])}, isNaN: ${isNaN(parseFloat(data[8]))}`);
-                                
                                 if (data[8] !== 'MM' && !isNaN(parseFloat(data[8]))) {
                                     metData = data;
-                                    console.log(`✅ FOUND valid buoy data at line ${i}: wave height ${data[8]}m`);
                                     break;
-                                } else {
-                                    console.log(`⚠️ Line ${i} skipped: WVHT="${data[8]}" (MM or NaN)`);
                                 }
-                            } else {
-                                console.log(`⚠️ Line ${i} skipped: insufficient fields (${data.length})`);
                             }
                         }
                     }
-                    
-                    if (!metData) {
-                        console.log(`❌ No valid meteorological data found in ${lines.length} lines`);
-                    }
-                } else {
-                    console.log("❌ Failed to fetch .txt file:", metResponse.status === 'fulfilled' ? metResponse.value.status : 'Promise rejected');
                 }
                 
                 // Process spectral wave data for swell information
@@ -1025,65 +966,48 @@
                     const specText = await specResponse.value.text();
                     const specLines = specText.split('\n');
                     
-                    console.log(`📊 NOAA buoy .spec file has ${specLines.length} lines`);
-                    
                     // Find the most recent spectral data line
                     for (let i = 2; i < specLines.length; i++) {
                         if (specLines[i].trim() && !specLines[i].startsWith('#')) {
                             const specDataLine = specLines[i].split(/\s+/);
                             if (specDataLine.length > 5) {
                                 specData = specDataLine;
-                                console.log(`📊 Found spectral data at line ${i}`);
                                 break;
                             }
                         }
                     }
-                } else {
-                    console.log("❌ Failed to fetch .spec file:", specResponse.status === 'fulfilled' ? specResponse.value.status : 'Promise rejected');
                 }
                 
                 // Update standard wave data
                 if (metData && metData.length > 14) {
-                    console.log(`📊 Processing buoy data (${metData.length} fields): ${metData.join(' | ')}`);
-                    
                     // NOAA buoy format: YY MM DD hh mm WDIR WSPD GST WVHT DPD APD MWD PRES ATMP WTMP DEWP VIS
                     const waveHeight = parseFloat(metData[8]); // WVHT in meters
                     const dominantPeriod = parseFloat(metData[9]); // DPD in seconds
                     const waterTemp = parseFloat(metData[14]); // WTMP in Celsius
                     
-                    console.log(`📊 Raw field values: WVHT="${metData[8]}", DPD="${metData[9]}", WTMP="${metData[14]}"`);
-                    console.log(`📊 Parsed values: Wave height: ${waveHeight}m, Period: ${dominantPeriod}s, Temp: ${waterTemp}°C`);
-                    
                     // Wave Height
                     if (!isNaN(waveHeight) && waveHeight >= 0) {
                         const waveHeightFt = (waveHeight * 3.28084).toFixed(1);
                         updateElement('wave-height', waveHeightFt + ' ft');
-                        console.log(`✅ Updated wave height: ${waveHeightFt} ft`);
                     } else {
                         updateElement('wave-height', 'No Data');
-                        console.log(`❌ Invalid wave height: "${metData[8]}" -> ${waveHeight}`);
                     }
                     
                     // Wave Period
                     if (!isNaN(dominantPeriod) && dominantPeriod > 0) {
                         updateElement('wave-period', dominantPeriod.toFixed(0) + ' sec');
-                        console.log(`✅ Updated wave period: ${dominantPeriod} sec`);
                     } else {
                         updateElement('wave-period', 'No Data');
-                        console.log(`❌ Invalid wave period: "${metData[9]}" -> ${dominantPeriod}`);
                     }
                     
                     // Water Temperature
                     if (!isNaN(waterTemp) && waterTemp > -10 && waterTemp < 50) {
                         const waterTempF = Math.round(waterTemp * 9/5 + 32);
                         updateElement('water-temp', waterTempF + '°F');
-                        console.log(`✅ Updated water temp: ${waterTempF}°F (${waterTemp}°C)`);
                     } else {
                         updateElement('water-temp', 'No Data');
-                        console.log(`❌ Invalid water temp: "${metData[14]}" -> ${waterTemp}°C`);
                     }
                 } else {
-                    console.log(`❌ Invalid meteorological data: metData=${!!metData}, length=${metData?.length || 0}`);
                     updateElement('wave-height', 'No Data');
                     updateElement('wave-period', 'No Data');
                     updateElement('water-temp', 'No Data');
@@ -1124,11 +1048,8 @@
                     updateElement('swell-direction', 'No Data');
                 }
                 
-                console.log("✅ Enhanced sea data updated");
                 
             } catch (error) {
-                console.error("❌ Cannot fetch enhanced sea data:", error.message);
-                console.log("⚠️ Real NOAA data unavailable - showing data unavailable status");
                 
                 // Only show "Unavailable" - no fallback or simulated data allowed
                 updateElement('wave-height', 'Unavailable');
@@ -1143,7 +1064,6 @@
         // Fetch NOAA surface and tidal currents data
         async function fetchCurrentsData() {
             try {
-                console.log("🌊 Fetching NOAA surface/tidal currents data...");
                 
                 // Use NOAA CO-OPS API for currents data near San Diego
                 // Station 9410170 is San Diego Bay, but we need currents station
@@ -1151,7 +1071,6 @@
                 
                 // Try to get currents data from nearby stations
                 const currentsUrl = getCorsProxyUrl(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentDate}&end_date=${currentDate}&station=9410170&product=currents&datum=MLLW&units=english&time_zone=lst_ldt&format=json&bin=1`);
-                console.log("🌊 Currents URL:", currentsUrl);
                 const response = await fetch(currentsUrl);
                 
                 if (response.ok) {
@@ -1177,7 +1096,6 @@
                         const tidalCurrent = speed > 0.5 ? (direction > 180 ? 'Ebb' : 'Flood') : 'Slack';
                         updateElement('tidal-current', tidalCurrent);
                         
-                        console.log("✅ Currents data updated");
                     } else {
                         throw new Error('No current data available');
                     }
@@ -1186,13 +1104,11 @@
                 }
                 
             } catch (error) {
-                console.error("❌ Cannot fetch currents data:", error.message);
                 // Try alternative approach with general tidal flow estimation
                 try {
                     // Get tide data to estimate tidal currents
                     const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
                     const tidesUrl = getCorsProxyUrl(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${today}&end_date=${today}&station=9410170&product=predictions&datum=mllw&units=english&time_zone=lst_ldt&format=json`);
-                    console.log("🌊 Fallback tides URL:", tidesUrl);
                     const tidesResponse = await fetch(tidesUrl);
                     
                     if (tidesResponse.ok) {
@@ -1222,7 +1138,6 @@
                             updateElement('current-direction', 'Variable');
                             updateElement('tidal-current', height > 3 ? 'Flood (est)' : 'Ebb (est)');
                             
-                            console.log("✅ Estimated currents data updated");
                         } else {
                             throw new Error('No tide data for estimation');
                         }
@@ -1230,7 +1145,6 @@
                         throw new Error('Cannot estimate currents');
                     }
                 } catch (estError) {
-                    console.error("❌ Cannot estimate currents:", estError.message);
                     updateElement('current-speed', 'No Data');
                     updateElement('current-direction', 'No Data');
                     updateElement('tidal-current', 'No Data');
@@ -1241,7 +1155,6 @@
         // Fetch USGS earthquake data for San Diego area (100km radius, past 48hrs)
         async function fetchEarthquakeData() {
             try {
-                console.log("🌍 Fetching USGS earthquake data for San Diego area...");
                 
                 const now = new Date();
                 const twoDaysAgo = new Date(now.getTime() - (48 * 60 * 60 * 1000));
@@ -1249,7 +1162,6 @@
                 
                 // San Diego coordinates: 32.7157, -117.1611
                 const earthquakeUrl = getCorsProxyUrl(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${startTime}&latitude=32.7157&longitude=-117.1611&maxradiuskm=100&minmagnitude=2.0&orderby=time`);
-                console.log("🌍 Earthquake URL:", earthquakeUrl);
                 const response = await fetch(earthquakeUrl);
                 
                 if (!response.ok) throw new Error('USGS earthquake API unavailable');
@@ -1310,10 +1222,8 @@
                     }
                 }
                 
-                console.log(`✅ Earthquake data updated (${earthquakes.length} events)`);
                 
             } catch (error) {
-                console.error("❌ Cannot fetch earthquake data:", error.message);
                 const container = document.getElementById('earthquake-container');
                 if (container) {
                     container.innerHTML = '<div class="data-value" style="color: #ef4444;">USGS data unavailable</div>';
@@ -1336,11 +1246,8 @@
         // Fetch NOAA PTWC tsunami alert status
         async function fetchTsunamiAlerts() {
             try {
-                console.log("🌊 Fetching NOAA PTWC tsunami alert status...");
-                
-                // Try to fetch from PTWC RSS feeds
+// Try to fetch from PTWC RSS feeds
                 const tsunamiUrl = getCorsProxyUrl('https://www.tsunami.gov/events/PAAQ/2025/01/27/25027007/1/WEAK52/WEAK52.txt');
-                console.log("🌊 Tsunami URL:", tsunamiUrl);
                 const response = await fetch(tsunamiUrl);
                 
                 if (response.ok) {
@@ -1372,7 +1279,6 @@
                 }
                 
             } catch (error) {
-                console.error("❌ Cannot fetch tsunami alerts:", error.message);
                 // Default to monitoring status
                 updateElement('tsunami-status', 'Monitoring Normal');
                 updateElement('tsunami-time', new Date().toLocaleString('en-US', {
@@ -1436,11 +1342,9 @@
         // Fetch real weather alerts from NOAA
         async function fetchRealWeatherAlerts() {
             try {
-                console.log("⚠️ Fetching real weather alerts from NOAA...");
                 
-                // Get alerts for San Diego County (zone CAZ043)
+// Get alerts for San Diego County (zone CAZ043)
                 const alertsUrl = getCorsProxyUrl('https://api.weather.gov/alerts/active?zone=CAZ043');
-                console.log("⚠️ Weather alerts URL:", alertsUrl);
                 const response = await fetch(alertsUrl, {
                     headers: {
                         'User-Agent': 'METOC-Dashboard/1.0'
@@ -1529,10 +1433,8 @@
                     document.getElementById('alert-title').style.color = '#10b981';
                 }
                 
-                console.log("✅ Real weather alerts updated");
                 
             } catch (error) {
-                console.error("❌ Cannot fetch real weather alerts:", error.message);
                 updateElement('alert-title', 'Alert System Offline');
                 updateElement('alert-desc', 'Unable to connect to NOAA Weather Alert system');
                 updateElement('alert-time', 'Check connection');
@@ -1543,7 +1445,6 @@
         // Fetch real-time astronomical data
         async function fetchRealAstronomicalData() {
             try {
-                console.log("🌙 Fetching real astronomical data...");
                 
                 // Use sunrise-sunset.org API for San Diego coordinates
                 const lat = 32.7157;  // San Diego latitude
@@ -1551,7 +1452,6 @@
                 const today = new Date().toISOString().split('T')[0];
                 
                 const sunriseUrl = getCorsProxyUrl(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&date=${today}&formatted=0`);
-                console.log("🌅 Sunrise URL:", sunriseUrl);
                 const response = await fetch(sunriseUrl);
                 const data = await response.json();
                 
@@ -1608,10 +1508,8 @@
                 
                 updateElement('visibility-conditions', visibilityCondition, visibilityColor);
                 
-                console.log("✅ Real astronomical data updated");
                 
             } catch (error) {
-                console.error("❌ Cannot fetch real astronomical data:", error.message);
                 updateElement('moon-phase', 'API Offline');
                 updateElement('twilight-begin', 'API Offline');
                 updateElement('twilight-end', 'API Offline');
@@ -1624,11 +1522,8 @@
         // Fetch real-time USCG maritime notices from RSS feed
         async function fetchRealNotices() {
             try {
-                console.log("📋 Fetching real USCG maritime notices...");
-                
-                // Use real USCG Sector San Diego RSS feed with CORS proxy if needed
+// Use real USCG Sector San Diego RSS feed with CORS proxy if needed
                 const uscgRssUrl = getCorsProxyUrl('https://public.govdelivery.com/topics/USDHSCG_436/feed.rss');
-                console.log("📋 USCG RSS URL:", uscgRssUrl);
                 
                 const response = await fetch(uscgRssUrl);
                 
@@ -1685,7 +1580,6 @@
                     }
                 }
                 
-                console.log(`📋 Processed ${totalItemsFound} RSS items, found ${notices.length} relevant maritime notices`);
                 
                 // Update notices display
                 const noticesContainer = document.getElementById('notices-container');
@@ -1720,10 +1614,8 @@
                     }
                 }
                 
-                console.log("✅ Real USCG maritime notices updated");
                 
             } catch (error) {
-                console.error("❌ Cannot fetch USCG notices:", error.message);
                 const noticesContainer = document.getElementById('notices-container');
                 if (noticesContainer) {
                     noticesContainer.innerHTML = `
@@ -1741,11 +1633,8 @@
         // Fetch real air quality data from EPA AirNow
         async function fetchRealAirQuality() {
             try {
-                console.log("🌫️ Fetching real EPA AirNow air quality data...");
-                
-                // EPA AirNow API endpoint for San Diego (zip code 92101)
+// EPA AirNow API endpoint for San Diego (zip code 92101)
                 const airQualityUrl = getCorsProxyUrl(`https://www.airnowapi.org/aq/observation/zipCode/current/?format=application/json&API_KEY=64CC1372-9F33-4AA3-8788-9AB1C2AE9E12&zipCode=92101&distance=25`);
-                console.log("🌫️ Air quality URL:", airQualityUrl);
                 const response = await fetch(airQualityUrl);
                 
                 if (!response.ok) throw new Error('EPA AirNow API unavailable');
@@ -1805,13 +1694,11 @@
                         }) + ' PST';
                     }
                     
-                    console.log("✅ EPA AirNow air quality data updated");
                 } else {
                     throw new Error('No air quality data available');
                 }
                 
             } catch (error) {
-                console.error("❌ Cannot fetch air quality data:", error.message);
                 
                 // Update UI with error state
                 const aqiIndex = document.getElementById('aqi-index');
@@ -1828,8 +1715,6 @@
 
         // Update all real-time data
         async function updateAllRealTime() {
-            console.log("🔄 Updating all real-time data...");
-            
             updateTime();
             
             // Attempt to fetch real data from all sources
@@ -1846,12 +1731,9 @@
                 fetchRealAirQuality(),
                 fetchRealWeatherAlerts()
             ]);
-            
-            console.log("✅ All real-time data update completed");
         }
 
         // Initialize the system
-        console.log("🚀 Initializing METOC System...");
         
         // Start real-time data updates immediately and then every 30 seconds
         setTimeout(updateAllRealTime, 1000); // Start after 1 second
@@ -1859,8 +1741,6 @@
         
         // Update time every second
         setInterval(updateTime, 1000);
-        
-        console.log("✅ METOC System initialized successfully");
     </script>
 </body>
 </html>
