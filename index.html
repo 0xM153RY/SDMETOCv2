@@ -608,18 +608,15 @@
             }) + ' PST';
         }
 
-        // Reliable 24-hour time formatter (replaces unreliable toLocaleTimeString)
-        function formatTime24Hour(date, timezone = 'America/Los_Angeles') {
-            // Create a new date object and manually adjust for PST timezone
-            const utcTime = new Date(date);
+        // Reliable 24-hour time formatter for NOAA times (already in Pacific time)
+        function formatTime24Hour(date) {
+            // NOAA API returns times in Pacific time when using time_zone=lst_ldt
+            // No timezone conversion needed - just format to 24-hour
+            const pacificTime = new Date(date);
             
-            // Convert UTC to PST (UTC-8) or PDT (UTC-7) - approximate with UTC-8
-            const pstOffset = -8 * 60; // PST is UTC-8 (in minutes)
-            const localTime = new Date(utcTime.getTime() + (pstOffset * 60 * 1000));
-            
-            // Extract hours and minutes manually for guaranteed 24-hour format
-            const hours = localTime.getUTCHours().toString().padStart(2, '0');
-            const minutes = localTime.getUTCMinutes().toString().padStart(2, '0');
+            // Extract hours and minutes directly (already in Pacific time)
+            const hours = pacificTime.getHours().toString().padStart(2, '0');
+            const minutes = pacificTime.getMinutes().toString().padStart(2, '0');
             
             return `${hours}:${minutes}`;
         }
