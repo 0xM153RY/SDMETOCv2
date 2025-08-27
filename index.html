@@ -644,7 +644,7 @@
                     }, 2000);
                 }
             } catch (error) {
-                // Silently handle DOM access errors
+                console.error('DOM UPDATE ERROR for', id, ':', error);
             }
         }
 
@@ -1823,20 +1823,33 @@
             ]);
             
             } catch (error) {
-                // Handle any unexpected errors in data update cycle
+                console.error('UPDATE CYCLE ERROR:', error);
             }
         }
 
+        // ERROR DEBUGGING - Log all errors to console for troubleshooting
+        window.addEventListener('error', function(e) {
+            console.error('GLOBAL ERROR:', e.error, 'at', e.filename + ':' + e.lineno);
+        });
+        
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('UNHANDLED PROMISE REJECTION:', e.reason);
+        });
+
         // Initialize the system with error handling
         try {
+            console.log('INIT: Starting system initialization...');
+            
             // Start real-time data updates immediately and then every 30 seconds
             setTimeout(updateAllRealTime, 1000); // Start after 1 second
             setInterval(updateAllRealTime, 30000); // Every 30 seconds
             
             // Update time every second
             setInterval(updateTime, 1000);
+            
+            console.log('INIT: System initialization complete');
         } catch (error) {
-            // Handle initialization errors silently
+            console.error('INIT ERROR:', error);
         }
     </script>
 </body>
