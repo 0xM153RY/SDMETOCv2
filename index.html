@@ -648,7 +648,9 @@
             try {
                 console.log("🌤️ Fetching real weather data from NOAA...");
                 
-                const response = await fetch('https://api.weather.gov/stations/KSAN/observations/latest', {
+                const weatherUrl = getCorsProxyUrl('https://api.weather.gov/stations/KSAN/observations/latest');
+                console.log("🌤️ Weather URL:", weatherUrl);
+                const response = await fetch(weatherUrl, {
                     headers: {
                         'User-Agent': 'METOC-Dashboard/1.0'
                     }
@@ -705,7 +707,9 @@
             try {
                 console.log("📅 Fetching 12-hour weather forecast...");
                 
-                const response = await fetch('https://api.weather.gov/gridpoints/SGX/64,16/forecast/hourly', {
+                const forecastUrl = getCorsProxyUrl('https://api.weather.gov/gridpoints/SGX/64,16/forecast/hourly');
+                console.log("🌤️ Forecast URL:", forecastUrl);
+                const response = await fetch(forecastUrl, {
                     headers: {
                         'User-Agent': 'METOC-Dashboard/1.0'
                     }
@@ -804,9 +808,15 @@
                 const tomorrow = new Date(pstNow.getTime() + 24*60*60*1000).toISOString().split('T')[0].replace(/-/g, '');
                 
                 // Fetch both predictions and current water level
+                const predUrl = getCorsProxyUrl(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${today}&end_date=${tomorrow}&station=9410170&product=predictions&datum=mllw&units=english&time_zone=lst_ldt&format=json&interval=hilo`);
+                const currentUrl = getCorsProxyUrl(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=9410170&product=water_level&datum=mllw&units=english&time_zone=lst_ldt&format=json`);
+                
+                console.log("🌊 Tide prediction URL:", predUrl);
+                console.log("🌊 Current level URL:", currentUrl);
+                
                 const [predResponse, currentResponse] = await Promise.allSettled([
-                    fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${today}&end_date=${tomorrow}&station=9410170&product=predictions&datum=mllw&units=english&time_zone=lst_ldt&format=json&interval=hilo`),
-                    fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=9410170&product=water_level&datum=mllw&units=english&time_zone=lst_ldt&format=json`)
+                    fetch(predUrl),
+                    fetch(currentUrl)
                 ]);
                 
                 if (predResponse.status !== 'fulfilled' || !predResponse.value.ok) throw new Error('Tide predictions API unavailable');
@@ -1140,7 +1150,9 @@
                 const currentDate = new Date().toISOString().split('T')[0];
                 
                 // Try to get currents data from nearby stations
-                const response = await fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentDate}&end_date=${currentDate}&station=9410170&product=currents&datum=MLLW&units=english&time_zone=lst_ldt&format=json&bin=1`);
+                const currentsUrl = getCorsProxyUrl(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentDate}&end_date=${currentDate}&station=9410170&product=currents&datum=MLLW&units=english&time_zone=lst_ldt&format=json&bin=1`);
+                console.log("🌊 Currents URL:", currentsUrl);
+                const response = await fetch(currentsUrl);
                 
                 if (response.ok) {
                     const data = await response.json();
@@ -1179,7 +1191,9 @@
                 try {
                     // Get tide data to estimate tidal currents
                     const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
-                    const tidesResponse = await fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${today}&end_date=${today}&station=9410170&product=predictions&datum=mllw&units=english&time_zone=lst_ldt&format=json`);
+                    const tidesUrl = getCorsProxyUrl(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${today}&end_date=${today}&station=9410170&product=predictions&datum=mllw&units=english&time_zone=lst_ldt&format=json`);
+                    console.log("🌊 Fallback tides URL:", tidesUrl);
+                    const tidesResponse = await fetch(tidesUrl);
                     
                     if (tidesResponse.ok) {
                         const tidesData = await tidesResponse.json();
@@ -1234,7 +1248,9 @@
                 const startTime = twoDaysAgo.toISOString();
                 
                 // San Diego coordinates: 32.7157, -117.1611
-                const response = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${startTime}&latitude=32.7157&longitude=-117.1611&maxradiuskm=100&minmagnitude=2.0&orderby=time`);
+                const earthquakeUrl = getCorsProxyUrl(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${startTime}&latitude=32.7157&longitude=-117.1611&maxradiuskm=100&minmagnitude=2.0&orderby=time`);
+                console.log("🌍 Earthquake URL:", earthquakeUrl);
+                const response = await fetch(earthquakeUrl);
                 
                 if (!response.ok) throw new Error('USGS earthquake API unavailable');
                 
@@ -1323,7 +1339,9 @@
                 console.log("🌊 Fetching NOAA PTWC tsunami alert status...");
                 
                 // Try to fetch from PTWC RSS feeds
-                const response = await fetch('https://www.tsunami.gov/events/PAAQ/2025/01/27/25027007/1/WEAK52/WEAK52.txt');
+                const tsunamiUrl = getCorsProxyUrl('https://www.tsunami.gov/events/PAAQ/2025/01/27/25027007/1/WEAK52/WEAK52.txt');
+                console.log("🌊 Tsunami URL:", tsunamiUrl);
+                const response = await fetch(tsunamiUrl);
                 
                 if (response.ok) {
                     const text = await response.text();
@@ -1421,7 +1439,9 @@
                 console.log("⚠️ Fetching real weather alerts from NOAA...");
                 
                 // Get alerts for San Diego County (zone CAZ043)
-                const response = await fetch('https://api.weather.gov/alerts/active?zone=CAZ043', {
+                const alertsUrl = getCorsProxyUrl('https://api.weather.gov/alerts/active?zone=CAZ043');
+                console.log("⚠️ Weather alerts URL:", alertsUrl);
+                const response = await fetch(alertsUrl, {
                     headers: {
                         'User-Agent': 'METOC-Dashboard/1.0'
                     }
@@ -1530,7 +1550,9 @@
                 const lng = -117.1611; // San Diego longitude
                 const today = new Date().toISOString().split('T')[0];
                 
-                const response = await fetch(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&date=${today}&formatted=0`);
+                const sunriseUrl = getCorsProxyUrl(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&date=${today}&formatted=0`);
+                console.log("🌅 Sunrise URL:", sunriseUrl);
+                const response = await fetch(sunriseUrl);
                 const data = await response.json();
                 
                 if (data.status === 'OK') {
@@ -1707,7 +1729,9 @@
                 console.log("🌫️ Fetching real EPA AirNow air quality data...");
                 
                 // EPA AirNow API endpoint for San Diego (zip code 92101)
-                const response = await fetch(`https://www.airnowapi.org/aq/observation/zipCode/current/?format=application/json&API_KEY=64CC1372-9F33-4AA3-8788-9AB1C2AE9E12&zipCode=92101&distance=25`);
+                const airQualityUrl = getCorsProxyUrl(`https://www.airnowapi.org/aq/observation/zipCode/current/?format=application/json&API_KEY=64CC1372-9F33-4AA3-8788-9AB1C2AE9E12&zipCode=92101&distance=25`);
+                console.log("🌫️ Air quality URL:", airQualityUrl);
+                const response = await fetch(airQualityUrl);
                 
                 if (!response.ok) throw new Error('EPA AirNow API unavailable');
                 
