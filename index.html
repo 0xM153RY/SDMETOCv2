@@ -81,6 +81,11 @@
             50% { opacity: 0.5; }
         }
 
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -351,23 +356,37 @@
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">🌊 Tide Information</div>
+                    <div class="card-subtitle">NOAA Station 9410170 - San Diego Bay</div>
                 </div>
                 <div class="card-content">
-                    <div class="data-row">
-                        <span class="data-label">Current Tide</span>
-                        <span class="data-value" id="current-tide">Loading...</span>
+                    <!-- Current Tide Level with Visual Bar -->
+                    <div style="margin-bottom: 1rem;">
+                        <div class="data-row">
+                            <span class="data-label">Current Tide</span>
+                            <span class="data-value" id="current-tide">Loading...</span>
+                        </div>
+                        <!-- Visual Tide Level Bar -->
+                        <div style="margin-top: 0.5rem; background: rgba(148, 163, 184, 0.2); height: 20px; border-radius: 10px; overflow: hidden; position: relative;">
+                            <div id="tide-level-bar" style="height: 100%; background: linear-gradient(90deg, #3b82f6, #06b6d4); width: 50%; border-radius: 10px; transition: width 0.5s ease;"></div>
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.7rem; color: #1e293b; font-weight: bold; text-shadow: 0 0 2px rgba(255,255,255,0.8);" id="tide-level-text">--</div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #94a3b8; margin-top: 0.25rem;">
+                            <span>Low</span>
+                            <span id="tide-direction" style="font-weight: 500;">Loading...</span>
+                            <span>High</span>
+                        </div>
                     </div>
-                    <div class="data-row">
-                        <span class="data-label">Next High</span>
-                        <span class="data-value" id="high-tide">Loading...</span>
-                    </div>
-                    <div class="data-row">
-                        <span class="data-label">Next Low</span>
-                        <span class="data-value" id="low-tide">Loading...</span>
-                    </div>
-                    <div class="data-row">
-                        <span class="data-label">Tide Direction</span>
-                        <span class="data-value" id="tide-direction">Loading...</span>
+                    
+                    <!-- Tide Times -->
+                    <div style="border-top: 1px solid rgba(148, 163, 184, 0.2); padding-top: 0.75rem;">
+                        <div class="data-row">
+                            <span class="data-label">Next High</span>
+                            <span class="data-value" id="high-tide">Loading...</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Next Low</span>
+                            <span class="data-value" id="low-tide">Loading...</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -457,6 +476,30 @@
                 </div>
             </div>
 
+            <!-- Seismic & Tsunami Monitoring -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🌍 Seismic & Tsunami Monitoring</div>
+                    <div class="card-subtitle">USGS Earthquakes + NOAA Tsunami Alerts</div>
+                </div>
+                <div class="card-content">
+                    <div class="data-row">
+                        <span class="data-label">Tsunami Status</span>
+                        <span class="data-value" id="tsunami-status">Loading...</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Last Alert Update</span>
+                        <span class="data-value" id="tsunami-time">Loading...</span>
+                    </div>
+                    <div style="border-top: 1px solid rgba(148, 163, 184, 0.2); margin: 0.75rem 0; padding-top: 0.75rem;">
+                        <div style="font-size: 0.875rem; color: #cbd5e1; margin-bottom: 0.5rem; font-weight: 500;">Recent Earthquakes (48hrs, 100km)</div>
+                        <div id="earthquake-container">
+                            <div class="data-value">Loading earthquake data...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Air Quality -->
             <div class="card">
                 <div class="card-header">
@@ -466,47 +509,19 @@
                 <div class="card-content">
                     <div class="data-row">
                         <span class="data-label">AQI Index</span>
-                        <span class="data-value" id="aqi-index">API Key Required</span>
+                        <span class="data-value" id="aqi-index">Loading...</span>
                     </div>
                     <div class="data-row">
                         <span class="data-label">Primary Pollutant</span>
-                        <span class="data-value" id="aqi-pollutant">API Key Required</span>
+                        <span class="data-value" id="aqi-pollutant">Loading...</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Health Advisory</span>
-                        <span class="data-value" id="aqi-category">API Key Required</span>
-                    </div>
-                    <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 0.5rem; text-align: center;">
-                        Free EPA AirNow API key: <a href="https://docs.airnowapi.org/" target="_blank" style="color: #60a5fa;">docs.airnowapi.org</a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Earthquakes -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">🌍 Recent Earthquakes</div>
-                    <div class="card-subtitle">USGS - Past 48hrs within 100km</div>
-                </div>
-                <div class="card-content" id="earthquake-container">
-                    <div class="data-value">Loading earthquake data...</div>
-                </div>
-            </div>
-
-            <!-- Tsunami Alerts -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">🌊 Tsunami Status</div>
-                    <div class="card-subtitle">NOAA Pacific Tsunami Warning Center</div>
-                </div>
-                <div class="card-content">
-                    <div class="data-row">
-                        <span class="data-label">Alert Level</span>
-                        <span class="data-value" id="tsunami-status">Loading...</span>
+                        <span class="data-label">Health Category</span>
+                        <span class="data-value" id="aqi-category">Loading...</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Last Update</span>
-                        <span class="data-value" id="tsunami-time">Loading...</span>
+                        <span class="data-label">Last Updated</span>
+                        <span class="data-value" id="aqi-time">Loading...</span>
                     </div>
                 </div>
             </div>
@@ -518,12 +533,30 @@
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">📋 Local Notices</div>
+                    <div class="card-subtitle">USCG Sector San Diego Maritime Safety</div>
                 </div>
-                <div id="notices-container">
-                    <div class="data-value">Loading notices...</div>
+                <div style="max-height: 400px; overflow-y: auto; margin-bottom: 0.75rem;" id="notices-container">
+                    <div class="data-value" style="text-align: center; padding: 1rem; color: #94a3b8;">
+                        <div class="loading-spinner" style="margin: 0 auto 0.5rem; width: 20px; height: 20px; border: 2px solid rgba(148, 163, 184, 0.3); border-top: 2px solid #60a5fa; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        Loading maritime notices...
+                    </div>
                 </div>
-                <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(148, 163, 184, 0.2); text-align: center;">
-                    Weekly LNM District 11: <a href="https://www.navcen.uscg.gov/?pageName=lnmDistrict&region=11" target="_blank" style="color: #60a5fa;">navcen.uscg.gov</a>
+                
+                <!-- Enhanced Footer -->
+                <div style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 6px; border: 1px solid rgba(148, 163, 184, 0.2);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <div style="font-size: 0.8rem; font-weight: 500; color: #cbd5e1;">📄 Official Resources</div>
+                        <div style="font-size: 0.7rem; color: #94a3b8;">Updated Live</div>
+                    </div>
+                    <div style="display: grid; gap: 0.5rem;">
+                        <a href="https://navcen.uscg.gov/local-notices-to-mariners?district=11+0&subdistrict=n" target="_blank" 
+                           style="color: #60a5fa; text-decoration: none; font-size: 0.75rem; padding: 0.4rem 0.6rem; background: rgba(96, 165, 250, 0.1); border-radius: 4px; border: 1px solid rgba(96, 165, 250, 0.3); display: block; text-align: center; transition: all 0.2s;">
+                            📋 Weekly LNM District 11 - Current Edition
+                        </a>
+                        <div style="font-size: 0.65rem; color: #94a3b8; text-align: center; margin-top: 0.25rem;">
+                            Data refreshed every 30 seconds from official USCG feeds
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -700,6 +733,44 @@
             }
         }
 
+        // Update visual tide bar display
+        function updateTideBar(currentLevel, predictions) {
+            const tideBar = document.getElementById('tide-level-bar');
+            const tideText = document.getElementById('tide-level-text');
+            
+            if (!tideBar || !tideText || !predictions) return;
+            
+            // Find the min and max tide levels from predictions
+            let minTide = Infinity;
+            let maxTide = -Infinity;
+            
+            for (let pred of predictions) {
+                const level = parseFloat(pred.v);
+                if (level < minTide) minTide = level;
+                if (level > maxTide) maxTide = level;
+            }
+            
+            // Calculate percentage for current level
+            const range = maxTide - minTide;
+            const percentage = range > 0 ? ((currentLevel - minTide) / range) * 100 : 50;
+            const clampedPercentage = Math.max(5, Math.min(95, percentage));
+            
+            // Update bar width and color based on tide level
+            tideBar.style.width = clampedPercentage + '%';
+            tideText.textContent = currentLevel.toFixed(1) + 'ft';
+            
+            // Color coding based on tide level
+            if (percentage < 25) {
+                tideBar.style.background = 'linear-gradient(90deg, #dc2626, #ef4444)'; // Red for very low
+            } else if (percentage < 50) {
+                tideBar.style.background = 'linear-gradient(90deg, #ea580c, #f97316)'; // Orange for low
+            } else if (percentage < 75) {
+                tideBar.style.background = 'linear-gradient(90deg, #3b82f6, #06b6d4)'; // Blue for medium
+            } else {
+                tideBar.style.background = 'linear-gradient(90deg, #059669, #10b981)'; // Green for high
+            }
+        }
+
         // Fetch real tide data from NOAA
         async function fetchRealTideData() {
             try {
@@ -711,13 +782,25 @@
                 const today = pstNow.toISOString().split('T')[0].replace(/-/g, '');
                 const tomorrow = new Date(pstNow.getTime() + 24*60*60*1000).toISOString().split('T')[0].replace(/-/g, '');
                 
-                const response = await fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${today}&end_date=${tomorrow}&station=9410170&product=predictions&datum=mllw&units=english&time_zone=lst_ldt&format=json&interval=hilo`);
+                // Fetch both predictions and current water level
+                const [predResponse, currentResponse] = await Promise.allSettled([
+                    fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${today}&end_date=${tomorrow}&station=9410170&product=predictions&datum=mllw&units=english&time_zone=lst_ldt&format=json&interval=hilo`),
+                    fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=9410170&product=water_level&datum=mllw&units=english&time_zone=lst_ldt&format=json`)
+                ]);
                 
-                if (!response.ok) throw new Error('Tide API unavailable');
+                if (predResponse.status !== 'fulfilled' || !predResponse.value.ok) throw new Error('Tide predictions API unavailable');
                 
-                const data = await response.json();
+                const data = await predResponse.value.json();
                 const predictions = data.predictions;
-                const currentLevel = null; // Current level requires separate API call
+                
+                // Get current water level
+                let currentLevel = null;
+                if (currentResponse.status === 'fulfilled' && currentResponse.value.ok) {
+                    const currentData = await currentResponse.value.json();
+                    if (currentData.data && currentData.data.length > 0) {
+                        currentLevel = parseFloat(currentData.data[0].v);
+                    }
+                }
                 
                 if (predictions && predictions.length > 0) {
                     // Use PST timezone for accurate comparison
@@ -740,7 +823,8 @@
                     
                     // Use real current water level if available, otherwise use closest prediction
                     if (currentLevel !== null) {
-                        updateElement('current-tide', 'Current: ' + currentLevel.toFixed(1) + ' ft');
+                        updateElement('current-tide', currentLevel.toFixed(1) + ' ft');
+                        updateTideBar(currentLevel, predictions);
                     } else {
                         // Fallback to closest prediction using PST time
                         let closestPred = null;
@@ -757,7 +841,9 @@
                         }
                         
                         if (closestPred) {
-                            updateElement('current-tide', 'Current: ' + parseFloat(closestPred.v).toFixed(1) + ' ft');
+                            const level = parseFloat(closestPred.v);
+                            updateElement('current-tide', level.toFixed(1) + ' ft');
+                            updateTideBar(level, predictions);
                         }
                     }
                     
@@ -819,6 +905,8 @@
                     const text = await metResponse.value.text();
                     const lines = text.split('\n');
                     
+                    console.log(`📊 NOAA buoy .txt file has ${lines.length} lines`);
+                    
                     // Find the first line with valid buoy data (skip headers and missing data)
                     for (let i = 2; i < lines.length; i++) {
                         if (lines[i].trim() && !lines[i].startsWith('#')) {
@@ -826,10 +914,13 @@
                             // Check if wave height data is available (not "MM")
                             if (data.length > 8 && data[8] !== 'MM' && !isNaN(parseFloat(data[8]))) {
                                 metData = data;
+                                console.log(`📊 Found valid buoy data at line ${i}: wave height ${data[8]}m`);
                                 break;
                             }
                         }
                     }
+                } else {
+                    console.log("❌ Failed to fetch .txt file:", metResponse.status === 'fulfilled' ? metResponse.value.status : 'Promise rejected');
                 }
                 
                 // Process spectral wave data for swell information
@@ -837,16 +928,21 @@
                     const specText = await specResponse.value.text();
                     const specLines = specText.split('\n');
                     
+                    console.log(`📊 NOAA buoy .spec file has ${specLines.length} lines`);
+                    
                     // Find the most recent spectral data line
                     for (let i = 2; i < specLines.length; i++) {
                         if (specLines[i].trim() && !specLines[i].startsWith('#')) {
                             const specDataLine = specLines[i].split(/\s+/);
                             if (specDataLine.length > 5) {
                                 specData = specDataLine;
+                                console.log(`📊 Found spectral data at line ${i}`);
                                 break;
                             }
                         }
                     }
+                } else {
+                    console.log("❌ Failed to fetch .spec file:", specResponse.status === 'fulfilled' ? specResponse.value.status : 'Promise rejected');
                 }
                 
                 // Update standard wave data
@@ -1396,7 +1492,9 @@
                 const pubDateRegex = /<pubDate>(.*?)<\/pubDate>/s;
                 
                 let match;
+                let totalItemsFound = 0;
                 while ((match = itemRegex.exec(xml)) !== null && notices.length < 5) {
+                    totalItemsFound++;
                     const item = match[1];
                     const titleMatch = titleRegex.exec(item);
                     const descMatch = descRegex.exec(item);
@@ -1410,10 +1508,16 @@
                         // Only include maritime safety notices (filter out non-maritime content)
                         if (title.toLowerCase().includes('safety') || 
                             title.toLowerCase().includes('hazard') ||
+                            title.toLowerCase().includes('haz ops') ||
                             title.toLowerCase().includes('diving') ||
                             title.toLowerCase().includes('military') ||
                             title.toLowerCase().includes('aton') ||
-                            description.toLowerCase().includes('mariner')) {
+                            title.toLowerCase().includes('detonation') ||
+                            title.toLowerCase().includes('imperial beach') ||
+                            title.toLowerCase().includes('southern california') ||
+                            description.toLowerCase().includes('mariner') ||
+                            description.toLowerCase().includes('underwater detonation') ||
+                            description.toLowerCase().includes('hazardous operations')) {
                             
                             notices.push({
                                 title: title,
@@ -1428,6 +1532,8 @@
                         }
                     }
                 }
+                
+                console.log(`📋 Processed ${totalItemsFound} RSS items, found ${notices.length} relevant maritime notices`);
                 
                 // Update notices display
                 const noticesContainer = document.getElementById('notices-container');
@@ -1465,6 +1571,92 @@
             }
         }
 
+        // Fetch real air quality data from EPA AirNow
+        async function fetchRealAirQuality() {
+            try {
+                console.log("🌫️ Fetching real EPA AirNow air quality data...");
+                
+                // EPA AirNow API endpoint for San Diego (zip code 92101)
+                const response = await fetch(`https://www.airnowapi.org/aq/observation/zipCode/current/?format=application/json&API_KEY=64CC1372-9F33-4AA3-8788-9AB1C2AE9E12&zipCode=92101&distance=25`);
+                
+                if (!response.ok) throw new Error('EPA AirNow API unavailable');
+                
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    // Get the primary pollutant with highest AQI
+                    let primaryData = data[0];
+                    for (const reading of data) {
+                        if (reading.AQI > primaryData.AQI) {
+                            primaryData = reading;
+                        }
+                    }
+                    
+                    // Update AQI index
+                    const aqiIndex = document.getElementById('aqi-index');
+                    if (aqiIndex) {
+                        const aqiValue = primaryData.AQI;
+                        let aqiColor = '#10b981'; // Good (green)
+                        if (aqiValue > 150) aqiColor = '#dc2626'; // Unhealthy (red)
+                        else if (aqiValue > 100) aqiColor = '#ea580c'; // Unhealthy for Sensitive Groups (orange)
+                        else if (aqiValue > 50) aqiColor = '#eab308'; // Moderate (yellow)
+                        
+                        aqiIndex.innerHTML = `<span style="color: ${aqiColor}; font-weight: bold;">${aqiValue}</span>`;
+                    }
+                    
+                    // Update primary pollutant
+                    const aqiPollutant = document.getElementById('aqi-pollutant');
+                    if (aqiPollutant) {
+                        aqiPollutant.textContent = primaryData.ParameterName || 'Unknown';
+                    }
+                    
+                    // Update health category
+                    const aqiCategory = document.getElementById('aqi-category');
+                    if (aqiCategory) {
+                        let category = 'Good';
+                        if (primaryData.AQI > 150) category = 'Unhealthy';
+                        else if (primaryData.AQI > 100) category = 'Unhealthy for Sensitive Groups';
+                        else if (primaryData.AQI > 50) category = 'Moderate';
+                        
+                        aqiCategory.textContent = category;
+                    }
+                    
+                    // Update last updated time
+                    const aqiTime = document.getElementById('aqi-time');
+                    if (aqiTime && primaryData.DateObserved && primaryData.HourObserved >= 0) {
+                        const dateStr = primaryData.DateObserved;
+                        const hour = String(primaryData.HourObserved).padStart(2, '0');
+                        const observationDate = new Date(`${dateStr} ${hour}:00:00 PST`);
+                        
+                        aqiTime.textContent = observationDate.toLocaleTimeString('en-US', {
+                            timeZone: 'America/Los_Angeles',
+                            hour12: false,
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }) + ' PST';
+                    }
+                    
+                    console.log("✅ EPA AirNow air quality data updated");
+                } else {
+                    throw new Error('No air quality data available');
+                }
+                
+            } catch (error) {
+                console.error("❌ Cannot fetch air quality data:", error.message);
+                
+                // Update UI with error state
+                const aqiIndex = document.getElementById('aqi-index');
+                const aqiPollutant = document.getElementById('aqi-pollutant');
+                const aqiCategory = document.getElementById('aqi-category');
+                const aqiTime = document.getElementById('aqi-time');
+                
+                if (aqiIndex) aqiIndex.textContent = 'Unavailable';
+                if (aqiPollutant) aqiPollutant.textContent = 'Unavailable';
+                if (aqiCategory) aqiCategory.textContent = 'Unavailable';
+                if (aqiTime) aqiTime.textContent = 'Unavailable';
+            }
+        }
+
         // Update all real-time data
         async function updateAllRealTime() {
             console.log("🔄 Updating all real-time data...");
@@ -1482,6 +1674,7 @@
                 fetchTsunamiAlerts(),
                 fetchRealAstronomicalData(),
                 fetchRealNotices(),
+                fetchRealAirQuality(),
                 fetchRealWeatherAlerts()
             ]);
             

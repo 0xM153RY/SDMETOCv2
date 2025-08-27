@@ -17,9 +17,25 @@
       "Bash(start http://localhost:3010)",
       "Bash(git init:*)",
       "Bash(git remote add:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:0xm153ry.github.io)",
+      "Bash(start \"C:\\Users\\mluca\\Documents\\WIP\\Dev\\METOC\\SDMETOCv1\\root\\index.html\")",
+      "Bash(git rm:*)",
+      "WebSearch",
+      "WebFetch(domain:www.navcen.uscg.gov)",
+      "WebFetch(domain:public.govdelivery.com)",
+      "WebFetch(domain:navcen.uscg.gov)",
+      "WebFetch(domain:www.portofsandiego.org)",
+      "WebFetch(domain:docs.airnowapi.org)",
+      "WebFetch(domain:www.ndbc.noaa.gov)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "C:\\"
+    ]
   }
 }
