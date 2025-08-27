@@ -980,8 +980,8 @@
                                  (window.location.protocol === 'https:' && window.location.hostname !== 'localhost');
             
             if (needsCorsProxy) {
-                // Use a public CORS proxy service
-                const corsProxy = 'https://api.allorigins.win/raw?url=';
+                // Use alternative CORS proxy - codetabs is more reliable
+                const corsProxy = 'https://api.codetabs.com/v1/proxy?quest=';
                 return corsProxy + encodeURIComponent(originalUrl);
             }
             
