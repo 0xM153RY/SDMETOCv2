@@ -611,6 +611,7 @@
 
         // Helper function to update elements
         function updateElement(id, value, color) {
+            console.log(`🔧 updateElement called: id=${id}, value=${value}`);
             var el = document.getElementById(id);
             if (el) {
                 el.textContent = value;
@@ -619,6 +620,9 @@
                 setTimeout(function() {
                     el.classList.remove('highlight-update');
                 }, 2000);
+                console.log(`✅ Element ${id} updated successfully`);
+            } else {
+                console.log(`❌ Element ${id} not found in DOM`);
             }
         }
 
@@ -889,6 +893,22 @@
         // Fetch enhanced real sea conditions from NOAA buoy with spectral wave data
         async function fetchRealSeaData() {
             try {
+                console.log("🌊 DEBUGGING: Starting fetchRealSeaData function...");
+                console.log("🌊 DEBUGGING: Current protocol:", window.location.protocol);
+                
+                // If running from file://, skip API calls and use fallback data immediately
+                if (window.location.protocol === 'file:') {
+                    console.log("⚠️ File protocol detected - using fallback data immediately");
+                    updateElement('wave-height', '2.3 ft');
+                    updateElement('wave-period', '8 sec');
+                    updateElement('water-temp', '71°F');
+                    updateElement('swell-height', '1.8 ft');
+                    updateElement('swell-period', '12 sec');
+                    updateElement('swell-direction', 'WSW');
+                    console.log("✅ Fallback sea data applied");
+                    return;
+                }
+                
                 console.log("🌊 DEBUGGING: Fetching enhanced sea conditions from NOAA Buoy 46235 (Imperial Beach Nearshore)...");
                 console.log("📍 DEBUGGING: URLs being fetched:");
                 console.log("   .txt: https://www.ndbc.noaa.gov/data/realtime2/46235.txt");
