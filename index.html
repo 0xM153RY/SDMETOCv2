@@ -1708,7 +1708,15 @@
                         }
                         noticesContainer.innerHTML = noticesHTML;
                     } else {
-                        noticesContainer.innerHTML = '<div class="data-value">No current maritime safety notices</div>';
+                        // No notices available - show link only
+                        noticesContainer.innerHTML = `
+                            <div style="margin-bottom: 0.75rem; padding: 0.75rem; background: rgba(15, 23, 42, 0.4); border-left: 3px solid #94a3b8; border-radius: 4px;">
+                                <div style="font-weight: 600; color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.5rem;">No current maritime safety notices</div>
+                                <div style="font-size: 0.8rem; color: #94a3b8; line-height: 1.4;">
+                                    Check: <a href="https://navcen.uscg.gov/local-notices-to-mariners?district=11+0&subdistrict=n" target="_blank" style="color: #60a5fa;">USCG District 11 LNM</a>
+                                </div>
+                            </div>
+                        `;
                     }
                 }
                 
@@ -1718,7 +1726,14 @@
                 console.error("❌ Cannot fetch USCG notices:", error.message);
                 const noticesContainer = document.getElementById('notices-container');
                 if (noticesContainer) {
-                    noticesContainer.innerHTML = '<div class="data-value" style="color: #ef4444;">USCG notices unavailable</div>';
+                    noticesContainer.innerHTML = `
+                        <div style="margin-bottom: 0.75rem; padding: 0.75rem; background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; border-radius: 4px;">
+                            <div style="font-weight: 600; color: #ef4444; font-size: 0.85rem; margin-bottom: 0.5rem;">RSS Feed Unavailable</div>
+                            <div style="font-size: 0.8rem; color: #94a3b8; line-height: 1.4;">
+                                Check manually: <a href="https://navcen.uscg.gov/local-notices-to-mariners?district=11+0&subdistrict=n" target="_blank" style="color: #60a5fa;">USCG District 11 LNM</a>
+                            </div>
+                        </div>
+                    `;
                 }
             }
         }
