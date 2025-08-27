@@ -8,9 +8,9 @@
     "dev": "python -m http.server 8000"
   },
   "keywords": ["maritime", "metoc", "noaa", "swcc", "navy", "weather", "tides"],
-  "homepage": "https://0xm153ry.github.io/SDMETOCv1",
+  "homepage": "https://0xm153ry.github.io/SDMETOCv2",
   "repository": {
     "type": "git",
-    "url": "https://github.com/0xm153ry/SDMETOCv1.git"
+    "url": "https://github.com/0xm153ry/SDMETOCv2.git"
   }
 }

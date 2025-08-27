@@ -3,7 +3,7 @@
 > **A gift to the SWCC community** - Real-time maritime operations dashboard featuring live NOAA data, tide predictions, weather conditions, and vessel traffic for San Diego Bay operations.
 
 ## 🌊 Live Dashboard
-**🔗 https://0xm153ry.github.io/SDMETOCv1**
+**🔗 https://0xm153ry.github.io/SDMETOCv2**
 
 *Deployed on GitHub Pages with real-time updates every 30 seconds*
 
@@ -31,7 +31,7 @@
 
 ## 🚀 Quick Start
 
-Simply visit **https://0xm153ry.github.io/SDMETOCv1** - no installation required!
+Simply visit **https://0xm153ry.github.io/SDMETOCv2** - no installation required!
 
 ### For Development
 ```bash
