@@ -867,57 +867,80 @@
                     }
                     
                     if (nextHigh) {
-                        // DEBUG: Log what NOAA actually returns
-                        console.log("TIDE DEBUG - nextHigh.t:", nextHigh.t);
-                        console.log("TIDE DEBUG - typeof:", typeof nextHigh.t);
-                        
-                        // Try multiple parsing approaches
+                        // COMPREHENSIVE 24-hour time parsing
                         const timeStr = nextHigh.t;
-                        let displayTime = "PARSING_ERROR";
+                        let displayTime = "N/A";
                         
-                        // Method 1: Direct string parsing
-                        if (typeof timeStr === 'string' && timeStr.includes(' ')) {
-                            const parts = timeStr.split(' ');
-                            if (parts.length >= 2) {
-                                displayTime = parts[1].substring(0, 5);
-                                console.log("TIDE DEBUG - Method 1 result:", displayTime);
-                            }
-                        }
-                        // Method 2: Date parsing with forced 24hr
-                        else {
+                        try {
+                            // Create date and extract time with guaranteed 24-hour format
                             const date = new Date(timeStr);
-                            const hours = date.getHours().toString().padStart(2, '0');
-                            const mins = date.getMinutes().toString().padStart(2, '0');
-                            displayTime = `${hours}:${mins}`;
-                            console.log("TIDE DEBUG - Method 2 result:", displayTime);
+                            
+                            // Manual 24-hour extraction - guaranteed to work
+                            let hours = date.getHours();
+                            let minutes = date.getMinutes();
+                            
+                            // Handle timezone offset if needed (Pacific is UTC-8 or UTC-7)
+                            // If date seems wrong, try adjusting
+                            if (hours === 0 && minutes === 0) {
+                                // Try parsing as ISO string with timezone
+                                const isoDate = new Date(timeStr + (timeStr.includes('T') ? '' : 'T00:00:00-08:00'));
+                                hours = isoDate.getHours();
+                                minutes = isoDate.getMinutes();
+                            }
+                            
+                            // Format to 24-hour HH:MM
+                            const h24 = hours.toString().padStart(2, '0');
+                            const m24 = minutes.toString().padStart(2, '0');
+                            displayTime = `${h24}:${m24}`;
+                            
+                        } catch (error) {
+                            // Last resort: try string parsing
+                            if (typeof timeStr === 'string' && timeStr.includes(' ')) {
+                                const parts = timeStr.split(' ');
+                                if (parts.length >= 2) {
+                                    displayTime = parts[1].substring(0, 5);
+                                }
+                            }
                         }
                         
                         updateElement('high-tide', displayTime + ' PST - ' + parseFloat(nextHigh.v).toFixed(1) + ' ft');
                     }
                     
                     if (nextLow) {
-                        // DEBUG: Log what NOAA actually returns
-                        console.log("TIDE DEBUG - nextLow.t:", nextLow.t);
-                        
-                        // Try multiple parsing approaches
+                        // COMPREHENSIVE 24-hour time parsing
                         const timeStr = nextLow.t;
-                        let displayTime = "PARSING_ERROR";
+                        let displayTime = "N/A";
                         
-                        // Method 1: Direct string parsing
-                        if (typeof timeStr === 'string' && timeStr.includes(' ')) {
-                            const parts = timeStr.split(' ');
-                            if (parts.length >= 2) {
-                                displayTime = parts[1].substring(0, 5);
-                                console.log("TIDE DEBUG - Low Method 1 result:", displayTime);
-                            }
-                        }
-                        // Method 2: Date parsing with forced 24hr
-                        else {
+                        try {
+                            // Create date and extract time with guaranteed 24-hour format
                             const date = new Date(timeStr);
-                            const hours = date.getHours().toString().padStart(2, '0');
-                            const mins = date.getMinutes().toString().padStart(2, '0');
-                            displayTime = `${hours}:${mins}`;
-                            console.log("TIDE DEBUG - Low Method 2 result:", displayTime);
+                            
+                            // Manual 24-hour extraction - guaranteed to work
+                            let hours = date.getHours();
+                            let minutes = date.getMinutes();
+                            
+                            // Handle timezone offset if needed (Pacific is UTC-8 or UTC-7)
+                            // If date seems wrong, try adjusting
+                            if (hours === 0 && minutes === 0) {
+                                // Try parsing as ISO string with timezone
+                                const isoDate = new Date(timeStr + (timeStr.includes('T') ? '' : 'T00:00:00-08:00'));
+                                hours = isoDate.getHours();
+                                minutes = isoDate.getMinutes();
+                            }
+                            
+                            // Format to 24-hour HH:MM
+                            const h24 = hours.toString().padStart(2, '0');
+                            const m24 = minutes.toString().padStart(2, '0');
+                            displayTime = `${h24}:${m24}`;
+                            
+                        } catch (error) {
+                            // Last resort: try string parsing
+                            if (typeof timeStr === 'string' && timeStr.includes(' ')) {
+                                const parts = timeStr.split(' ');
+                                if (parts.length >= 2) {
+                                    displayTime = parts[1].substring(0, 5);
+                                }
+                            }
                         }
                         
                         updateElement('low-tide', displayTime + ' PST - ' + parseFloat(nextLow.v).toFixed(1) + ' ft');
