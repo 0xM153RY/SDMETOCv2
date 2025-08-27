@@ -608,17 +608,25 @@
             }) + ' PST';
         }
 
-        // Reliable 24-hour time formatter for NOAA times (already in Pacific time)
-        function formatTime24Hour(date) {
-            // NOAA API returns times in Pacific time when using time_zone=lst_ldt
-            // No timezone conversion needed - just format to 24-hour
-            const pacificTime = new Date(date);
-            
-            // Extract hours and minutes directly (already in Pacific time)
-            const hours = pacificTime.getHours().toString().padStart(2, '0');
-            const minutes = pacificTime.getMinutes().toString().padStart(2, '0');
-            
-            return `${hours}:${minutes}`;
+        // Reliable 24-hour time formatter for NOAA times
+        function formatTime24Hour(dateString) {
+            try {
+                // NOAA API returns times in various formats, ensure 24-hour Pacific time
+                const date = new Date(dateString);
+                
+                // Force 24-hour format using Intl.DateTimeFormat for Pacific timezone
+                const formatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: 'America/Los_Angeles',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+                
+                return formatter.format(date);
+            } catch (error) {
+                // Fallback if date parsing fails
+                return 'Invalid Time';
+            }
         }
 
         // Helper function to update elements
