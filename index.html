@@ -648,56 +648,75 @@
             }
         }
 
-        // Enhanced fetch with mobile fallback system - ULTRA AGGRESSIVE
+        // Enhanced fetch with mobile fallback system - ULTRA AGGRESSIVE DEBUG
         async function fetchWithTimeout(url, timeout = 10000) {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
+            console.log('FETCH DEBUG: isMobile =', isMobile, 'userAgent =', navigator.userAgent.substring(0, 50));
+            console.log('FETCH DEBUG: url type =', typeof url, 'url =', url);
+            
             // Mobile fallback system - try multiple proxy methods
             if (isMobile && typeof url === 'object' && url.primary) {
+                console.log('MOBILE DEBUG: Using mobile proxy system for', url.original?.substring(0, 50));
+                
                 // Try completely different proxy services for mobile
                 const mobileProxies = [
-                    'https://cors-anywhere.herokuapp.com/' + url.original,
                     'https://api.allorigins.win/raw?url=' + encodeURIComponent(url.original),
+                    'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url.original),
                     'https://thingproxy.freeboard.io/fetch/' + url.original,
+                    'https://cors-anywhere.herokuapp.com/' + url.original,
                     'https://proxy.cors.sh/' + url.original,
                     url.original // Direct as last resort
                 ];
                 
-                const mobileTimeout = 4000; // Even more aggressive timeout
+                const mobileTimeout = 6000; // Increased timeout for mobile
+                console.log('MOBILE DEBUG: Will try', mobileProxies.length, 'proxy methods with', mobileTimeout, 'ms timeout');
                 
                 for (let i = 0; i < mobileProxies.length; i++) {
                     const proxyUrl = mobileProxies[i];
-                    const method = ['cors-anywhere', 'allorigins', 'thingproxy', 'cors.sh', 'direct'][i];
+                    const method = ['allorigins', 'codetabs', 'thingproxy', 'cors-anywhere', 'cors.sh', 'direct'][i];
                     
-                    console.log(`MOBILE: Trying ${method}:`, proxyUrl.substring(0, 60));
+                    console.log(`MOBILE DEBUG: Attempt ${i+1}/${mobileProxies.length} - Trying ${method}:`, proxyUrl.substring(0, 80));
                     
                     try {
+                        const startTime = Date.now();
                         const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), mobileTimeout);
+                        const timeoutId = setTimeout(() => {
+                            console.log(`MOBILE TIMEOUT: ${method} timed out after ${mobileTimeout}ms`);
+                            controller.abort();
+                        }, mobileTimeout);
                         
                         const response = await fetch(proxyUrl, {
                             signal: controller.signal,
+                            method: 'GET',
                             headers: {
-                                'User-Agent': 'METOC-Dashboard/1.0',
-                                'X-Requested-With': 'XMLHttpRequest'
+                                'User-Agent': 'METOC-Dashboard/1.0 Mobile',
+                                'Accept': 'application/json, text/plain, */*',
+                                'Cache-Control': 'no-cache'
                             }
                         });
                         
                         clearTimeout(timeoutId);
+                        const duration = Date.now() - startTime;
+                        
+                        console.log(`MOBILE RESULT: ${method} responded in ${duration}ms with status ${response.status}`);
                         
                         if (response.ok) {
-                            console.log(`MOBILE: SUCCESS with ${method}!`);
+                            console.log(`MOBILE SUCCESS: ${method} worked! Status: ${response.status}, Content-Type: ${response.headers.get('content-type')}`);
                             return response;
                         } else {
-                            console.log(`MOBILE: ${method} returned ${response.status}`);
+                            console.warn(`MOBILE FAIL: ${method} returned HTTP ${response.status} ${response.statusText}`);
                         }
                         
                     } catch (error) {
-                        console.error(`MOBILE: ${method} failed:`, error.message);
+                        const errorType = error.name === 'AbortError' ? 'TIMEOUT' : 'ERROR';
+                        console.error(`MOBILE ${errorType}: ${method} failed -`, error.message);
+                        console.error(`MOBILE ${errorType}: Full error:`, error);
+                        
                         if (i === mobileProxies.length - 1) {
+                            console.error(`MOBILE FINAL FAIL: All ${mobileProxies.length} proxy methods failed for`, url.original?.substring(0, 50));
                             throw new Error(`All ${mobileProxies.length} mobile proxy methods failed`);
                         }
-                        // Continue to next proxy method immediately
                     }
                 }
             }
@@ -1952,10 +1971,15 @@
         // Update all real-time data with comprehensive error handling
         async function updateAllRealTime() {
             try {
+            console.log('UPDATE DEBUG: Starting updateAllRealTime()');
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            console.log('UPDATE DEBUG: Mobile device detected:', isMobile);
+            
             updateTime();
             
             // Attempt to fetch real data from all sources
-            await Promise.allSettled([
+            console.log('UPDATE DEBUG: Starting Promise.allSettled for all APIs');
+            const results = await Promise.allSettled([
                 fetchRealWeatherData(),
                 fetchWeatherForecast(),
                 fetchRealTideData(), 
@@ -1968,6 +1992,12 @@
                 fetchRealAirQuality(),
                 fetchRealWeatherAlerts()
             ]);
+            
+            console.log('UPDATE DEBUG: API results summary:');
+            const apiNames = ['Weather', 'Forecast', 'Tides', 'Sea', 'Currents', 'Earthquake', 'Tsunami', 'Astronomical', 'Notices', 'AirQuality', 'WeatherAlerts'];
+            results.forEach((result, index) => {
+                console.log(`UPDATE DEBUG: ${apiNames[index]} - ${result.status}`, result.status === 'rejected' ? result.reason?.message : 'Success');
+            });
             
             } catch (error) {
                 console.error('UPDATE CYCLE ERROR:', error);
