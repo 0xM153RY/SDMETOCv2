@@ -659,24 +659,38 @@
             if (isMobile && typeof url === 'object' && url.primary) {
                 console.log('MOBILE DEBUG: Using mobile proxy system for', url.original?.substring(0, 50));
                 
-                // Try completely different proxy services for mobile
+                // Try completely different proxy services for mobile with longer timeouts
                 const mobileProxies = [
-                    'https://api.allorigins.win/raw?url=' + encodeURIComponent(url.original),
-                    'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url.original),
-                    'https://thingproxy.freeboard.io/fetch/' + url.original,
-                    'https://cors-anywhere.herokuapp.com/' + url.original,
-                    'https://proxy.cors.sh/' + url.original,
-                    url.original // Direct as last resort
+                    {
+                        url: 'https://api.allorigins.win/get?url=' + encodeURIComponent(url.original),
+                        method: 'allorigins-json',
+                        parseJSON: true
+                    },
+                    {
+                        url: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url.original),
+                        method: 'codetabs',
+                        parseJSON: false
+                    },
+                    {
+                        url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url.original),
+                        method: 'allorigins-raw',
+                        parseJSON: false
+                    },
+                    {
+                        url: url.original,
+                        method: 'direct',
+                        parseJSON: false
+                    }
                 ];
                 
-                const mobileTimeout = 6000; // Increased timeout for mobile
+                const mobileTimeout = 12000; // Much longer timeout for mobile networks
                 console.log('MOBILE DEBUG: Will try', mobileProxies.length, 'proxy methods with', mobileTimeout, 'ms timeout');
                 
                 for (let i = 0; i < mobileProxies.length; i++) {
-                    const proxyUrl = mobileProxies[i];
-                    const method = ['allorigins', 'codetabs', 'thingproxy', 'cors-anywhere', 'cors.sh', 'direct'][i];
+                    const proxy = mobileProxies[i];
+                    const method = proxy.method;
                     
-                    console.log(`MOBILE DEBUG: Attempt ${i+1}/${mobileProxies.length} - Trying ${method}:`, proxyUrl.substring(0, 80));
+                    console.log(`MOBILE DEBUG: Attempt ${i+1}/${mobileProxies.length} - Trying ${method}:`, proxy.url.substring(0, 80));
                     
                     try {
                         const startTime = Date.now();
@@ -686,7 +700,7 @@
                             controller.abort();
                         }, mobileTimeout);
                         
-                        const response = await fetch(proxyUrl, {
+                        const response = await fetch(proxy.url, {
                             signal: controller.signal,
                             method: 'GET',
                             headers: {
@@ -703,6 +717,21 @@
                         
                         if (response.ok) {
                             console.log(`MOBILE SUCCESS: ${method} worked! Status: ${response.status}, Content-Type: ${response.headers.get('content-type')}`);
+                            
+                            // Handle allorigins JSON response format
+                            if (proxy.parseJSON) {
+                                const data = await response.json();
+                                if (data.contents) {
+                                    // Create a new response with the actual content
+                                    const actualResponse = new Response(data.contents, {
+                                        status: response.status,
+                                        statusText: response.statusText,
+                                        headers: response.headers
+                                    });
+                                    return actualResponse;
+                                }
+                            }
+                            
                             return response;
                         } else {
                             console.warn(`MOBILE FAIL: ${method} returned HTTP ${response.status} ${response.statusText}`);
@@ -723,7 +752,7 @@
             
             // Desktop or single URL fallback to original method
             const controller = new AbortController();
-            const finalTimeout = isMobile ? 4000 : timeout;
+            const finalTimeout = isMobile ? 12000 : timeout;
             const timeoutId = setTimeout(() => controller.abort(), finalTimeout);
             
             try {
