@@ -651,7 +651,11 @@
         // Enhanced fetch with timeout for mobile reliability
         async function fetchWithTimeout(url, timeout = 10000) {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            // Shorter timeout for mobile to fail faster and show offline status
+            const mobileTimeout = isMobile ? Math.min(timeout, 8000) : timeout;
+            const timeoutId = setTimeout(() => controller.abort(), mobileTimeout);
             
             try {
                 const response = await fetch(url, {
@@ -661,11 +665,20 @@
                     }
                 });
                 clearTimeout(timeoutId);
+                
+                if (isMobile) {
+                    console.log('MOBILE: Successfully fetched', url.substring(0, 50));
+                }
+                
                 return response;
             } catch (error) {
                 clearTimeout(timeoutId);
                 if (error.name === 'AbortError') {
-                    throw new Error('Request timeout after ' + timeout + 'ms');
+                    console.error('MOBILE: Timeout after', mobileTimeout + 'ms for', url.substring(0, 50));
+                    throw new Error('Request timeout after ' + mobileTimeout + 'ms');
+                }
+                if (isMobile) {
+                    console.error('MOBILE: Fetch error for', url.substring(0, 50), ':', error.message);
                 }
                 throw error;
             }
@@ -717,7 +730,10 @@
                 
                 
             } catch (error) {
-                updateElement('temp-display', 'Offline');
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                const offlineText = isMobile ? 'Network Issue' : 'Offline';
+                
+                updateElement('temp-display', offlineText);
                 updateElement('wind-speed', 'N/A');
             }
         }
@@ -1001,23 +1017,21 @@
                                  (window.location.protocol === 'https:' && window.location.hostname !== 'localhost');
             
             if (needsCorsProxy) {
-                // Mobile-specific proxy selection for better reliability
+                // MOBILE FIRST - Always use allorigins for all APIs on mobile for consistency
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 
-                // Special handling for NOAA APIs that are sensitive to URL encoding
-                if (originalUrl.includes('tidesandcurrents.noaa.gov')) {
-                    // Use allorigins for NOAA APIs - better URL handling
-                    return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl);
-                }
-                
-                // For mobile, prefer allorigins for better compatibility
                 if (isMobile) {
+                    console.log('MOBILE: Using allorigins for', originalUrl.substring(0, 50));
                     return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl);
                 }
                 
-                // Use codetabs for desktop other APIs
-                const corsProxy = 'https://api.codetabs.com/v1/proxy?quest=';
-                return corsProxy + encodeURIComponent(originalUrl);
+                // Desktop: Use API-specific proxies
+                if (originalUrl.includes('tidesandcurrents.noaa.gov') || originalUrl.includes('weather.gov')) {
+                    return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl);
+                }
+                
+                // Use codetabs for other APIs on desktop
+                return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(originalUrl);
             }
             
             // Use direct URL for local development
@@ -1481,13 +1495,9 @@
         async function fetchRealWeatherAlerts() {
             try {
                 
-// Get alerts for San Diego County (zone CAZ043)
+// Get alerts for San Diego County (zone CAZ043) with mobile timeout
                 const alertsUrl = getCorsProxyUrl('https://api.weather.gov/alerts/active?zone=CAZ043');
-                const response = await fetch(alertsUrl, {
-                    headers: {
-                        'User-Agent': 'METOC-Dashboard/1.0'
-                    }
-                });
+                const response = await fetchWithTimeout(alertsUrl, 8000);
                 
                 if (!response.ok) throw new Error('Weather alerts API unavailable');
                 
