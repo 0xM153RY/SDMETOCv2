@@ -659,7 +659,7 @@
             if (isMobile && typeof url === 'object' && url.mobileFriendly) {
                 console.log('MOBILE: Using simple mobile strategy for', url.original?.substring(0, 50));
                 
-                const mobileTimeout = 8000; // Reasonable timeout for mobile
+                const mobileTimeout = 15000; // Extended timeout for slow mobile networks
                 const urlsToTry = [url.primary, url.secondary, url.tertiary].filter(u => u !== null);
                 
                 console.log('MOBILE: Will try', urlsToTry.length, 'URLs with', mobileTimeout, 'ms timeout each');
@@ -706,6 +706,10 @@
                         if (i === urlsToTry.length - 1) {
                             console.error('MOBILE: All mobile strategies failed for', url.original?.substring(0, 50));
                             throw new Error('Mobile network cannot access this API');
+                        } else {
+                            // Small delay before trying next method to be gentler on mobile networks
+                            console.log('MOBILE: Waiting 1 second before trying next method...');
+                            await new Promise(resolve => setTimeout(resolve, 1000));
                         }
                     }
                 }
