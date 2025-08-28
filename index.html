@@ -648,37 +648,69 @@
             }
         }
 
-        // Enhanced fetch with timeout for mobile reliability
+        // Enhanced fetch with mobile fallback system
         async function fetchWithTimeout(url, timeout = 10000) {
-            const controller = new AbortController();
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
-            // Shorter timeout for mobile to fail faster and show offline status
-            const mobileTimeout = isMobile ? Math.min(timeout, 8000) : timeout;
-            const timeoutId = setTimeout(() => controller.abort(), mobileTimeout);
+            // Mobile fallback system - try multiple proxy methods
+            if (isMobile && typeof url === 'object' && url.primary) {
+                const urls = [url.primary, url.secondary, url.tertiary];
+                const mobileTimeout = 6000; // Very aggressive timeout for mobile
+                
+                for (let i = 0; i < urls.length; i++) {
+                    const currentUrl = urls[i];
+                    const method = ['primary', 'secondary', 'direct'][i];
+                    
+                    console.log(`MOBILE: Trying ${method} proxy:`, currentUrl.substring(0, 50));
+                    
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), mobileTimeout);
+                        
+                        const response = await fetch(currentUrl, {
+                            signal: controller.signal,
+                            headers: {
+                                'User-Agent': 'METOC-Dashboard/1.0'
+                            }
+                        });
+                        
+                        clearTimeout(timeoutId);
+                        
+                        if (response.ok) {
+                            console.log(`MOBILE: SUCCESS with ${method} proxy`);
+                            return response;
+                        } else {
+                            console.log(`MOBILE: ${method} proxy returned ${response.status}`);
+                        }
+                        
+                    } catch (error) {
+                        console.error(`MOBILE: ${method} proxy failed:`, error.message);
+                        if (i === urls.length - 1) {
+                            throw new Error('All mobile proxy methods failed');
+                        }
+                        // Continue to next proxy method
+                    }
+                }
+            }
+            
+            // Desktop or single URL fallback to original method
+            const controller = new AbortController();
+            const finalTimeout = isMobile ? 6000 : timeout;
+            const timeoutId = setTimeout(() => controller.abort(), finalTimeout);
             
             try {
-                const response = await fetch(url, {
+                const response = await fetch(typeof url === 'object' ? url.primary : url, {
                     signal: controller.signal,
                     headers: {
                         'User-Agent': 'METOC-Dashboard/1.0'
                     }
                 });
                 clearTimeout(timeoutId);
-                
-                if (isMobile) {
-                    console.log('MOBILE: Successfully fetched', url.substring(0, 50));
-                }
-                
                 return response;
             } catch (error) {
                 clearTimeout(timeoutId);
                 if (error.name === 'AbortError') {
-                    console.error('MOBILE: Timeout after', mobileTimeout + 'ms for', url.substring(0, 50));
-                    throw new Error('Request timeout after ' + mobileTimeout + 'ms');
-                }
-                if (isMobile) {
-                    console.error('MOBILE: Fetch error for', url.substring(0, 50), ':', error.message);
+                    throw new Error('Request timeout after ' + finalTimeout + 'ms');
                 }
                 throw error;
             }
@@ -1017,12 +1049,19 @@
                                  (window.location.protocol === 'https:' && window.location.hostname !== 'localhost');
             
             if (needsCorsProxy) {
-                // MOBILE FIRST - Always use allorigins for all APIs on mobile for consistency
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 
                 if (isMobile) {
-                    console.log('MOBILE: Using allorigins for', originalUrl.substring(0, 50));
-                    return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl);
+                    // MOBILE: Try multiple proxy strategies
+                    console.log('MOBILE: Generating proxy URLs for', originalUrl.substring(0, 50));
+                    
+                    // Return multiple proxy options for mobile fallback system
+                    return {
+                        primary: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl),
+                        secondary: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(originalUrl),
+                        tertiary: originalUrl, // Direct attempt as last resort
+                        original: originalUrl
+                    };
                 }
                 
                 // Desktop: Use API-specific proxies
