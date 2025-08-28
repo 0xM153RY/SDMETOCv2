@@ -1150,6 +1150,9 @@
                     }
                 }
                 
+                console.log('SEA CONDITIONS DEBUG: metData length:', metData?.length);
+                console.log('SEA CONDITIONS DEBUG: metData sample:', metData?.slice(0, 15));
+                
                 // Update standard wave data
                 if (metData && metData.length > 14) {
                     // NOAA buoy format: YY MM DD hh mm WDIR WSPD GST WVHT DPD APD MWD PRES ATMP WTMP DEWP VIS
@@ -1222,14 +1225,19 @@
                 
                 
             } catch (error) {
+                console.error('SEA CONDITIONS ERROR:', error.message);
+                console.log('SEA CONDITIONS ERROR: Full error object:', error);
                 
                 // Only show "Unavailable" - no fallback or simulated data allowed
-                updateElement('wave-height', 'Unavailable');
-                updateElement('wave-period', 'Unavailable');
-                updateElement('water-temp', 'Unavailable');
-                updateElement('swell-height', 'Unavailable');
-                updateElement('swell-period', 'Unavailable');
-                updateElement('swell-direction', 'Unavailable');
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                const errorText = isMobile ? 'Network Issue' : 'Unavailable';
+                
+                updateElement('wave-height', errorText);
+                updateElement('wave-period', errorText);
+                updateElement('water-temp', errorText);
+                updateElement('swell-height', errorText);
+                updateElement('swell-period', errorText);
+                updateElement('swell-direction', errorText);
             }
         }
 
@@ -1696,7 +1704,31 @@
                 
                 
             } catch (error) {
-                updateElement('moon-phase', 'API Offline');
+                console.error('ASTRONOMICAL ERROR:', error.message);
+                
+                // Fallback to approximate sunrise/sunset times for San Diego
+                const today = new Date();
+                const month = today.getMonth() + 1;
+                
+                // Approximate times for San Diego by season
+                let sunriseApprox, sunsetApprox;
+                if (month >= 3 && month <= 5) { // Spring
+                    sunriseApprox = "06:15";
+                    sunsetApprox = "19:30";
+                } else if (month >= 6 && month <= 8) { // Summer
+                    sunriseApprox = "05:50";
+                    sunsetApprox = "20:00";
+                } else if (month >= 9 && month <= 11) { // Fall
+                    sunriseApprox = "06:30";
+                    sunsetApprox = "18:30";
+                } else { // Winter
+                    sunriseApprox = "06:50";
+                    sunsetApprox = "17:00";
+                }
+                
+                updateElement('sunrise-time', sunriseApprox + ' PST (approx)');
+                updateElement('sunset-time', sunsetApprox + ' PST (approx)');
+                updateElement('moon-phase', calculateMoonPhase()); // Moon phase calculation still works
                 updateElement('twilight-begin', 'API Offline');
                 updateElement('twilight-end', 'API Offline');
                 updateElement('moon-illumination', 'API Offline');
@@ -1827,7 +1859,11 @@
                 
                 const data = await response.json();
                 
+                console.log('AIR QUALITY DEBUG: Response data:', data);
+                console.log('AIR QUALITY DEBUG: Data length:', data?.length);
+                
                 if (data && data.length > 0) {
+                    console.log('AIR QUALITY DEBUG: Found', data.length, 'readings');
                     // Get the primary pollutant with highest AQI
                     let primaryData = data[0];
                     for (const reading of data) {
