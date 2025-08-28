@@ -720,7 +720,7 @@
         async function fetchRealWeatherData() {
             try {
                 
-                const weatherUrl = getCorsProxyUrl('https://api.weather.gov/stations/KSAN/observations/latest');
+                const weatherUrl = getMobileFallbackUrls('https://api.weather.gov/stations/KSAN/observations/latest');
                 const response = await fetchWithTimeout(weatherUrl, 15000);
                 
                 if (!response.ok) throw new Error('Weather API unavailable');
@@ -874,16 +874,16 @@
                 const today = pstNow.toISOString().split('T')[0].replace(/-/g, '');
                 const tomorrow = new Date(pstNow.getTime() + 24*60*60*1000).toISOString().split('T')[0].replace(/-/g, '');
                 
-                // Fetch both predictions and current water level
-                const predUrl = getCorsProxyUrl(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${today}&end_date=${tomorrow}&station=9410170&product=predictions&datum=mllw&units=english&time_zone=lst_ldt&format=json&interval=hilo`);
-                const currentUrl = getCorsProxyUrl(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=9410170&product=water_level&datum=mllw&units=english&time_zone=lst_ldt&format=json`);
+                // Fetch both predictions and current water level  
+                const predUrl = getMobileFallbackUrls(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${today}&end_date=${tomorrow}&station=9410170&product=predictions&datum=mllw&units=english&time_zone=lst_ldt&format=json&interval=hilo`);
+                const currentUrl = getMobileFallbackUrls(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=9410170&product=water_level&datum=mllw&units=english&time_zone=lst_ldt&format=json`);
                 
                 console.log('TIDE URLS:', { predUrl, currentUrl });
                 
                 
                 const [predResponse, currentResponse] = await Promise.allSettled([
-                    fetch(predUrl),
-                    fetch(currentUrl)
+                    fetchWithTimeout(predUrl),
+                    fetchWithTimeout(currentUrl)
                 ]);
                 
                 if (predResponse.status !== 'fulfilled' || !predResponse.value.ok) throw new Error('Tide predictions API unavailable');
@@ -1049,22 +1049,7 @@
                                  (window.location.protocol === 'https:' && window.location.hostname !== 'localhost');
             
             if (needsCorsProxy) {
-                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                
-                if (isMobile) {
-                    // MOBILE: Try multiple proxy strategies
-                    console.log('MOBILE: Generating proxy URLs for', originalUrl.substring(0, 50));
-                    
-                    // Return multiple proxy options for mobile fallback system
-                    return {
-                        primary: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl),
-                        secondary: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(originalUrl),
-                        tertiary: originalUrl, // Direct attempt as last resort
-                        original: originalUrl
-                    };
-                }
-                
-                // Desktop: Use API-specific proxies
+                // Desktop: Use API-specific proxies - return string for backward compatibility
                 if (originalUrl.includes('tidesandcurrents.noaa.gov') || originalUrl.includes('weather.gov')) {
                     return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl);
                 }
@@ -1077,15 +1062,33 @@
             return originalUrl;
         }
 
+        // Special mobile fallback URL generator
+        function getMobileFallbackUrls(originalUrl) {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile && (window.location.hostname.includes('github.io') || 
+                           (window.location.protocol === 'https:' && window.location.hostname !== 'localhost'))) {
+                return {
+                    primary: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl),
+                    secondary: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(originalUrl),
+                    tertiary: originalUrl,
+                    original: originalUrl
+                };
+            }
+            
+            // Not mobile or not hosted - return regular URL
+            return getCorsProxyUrl(originalUrl);
+        }
+
         // Fetch enhanced real sea conditions from NOAA buoy with spectral wave data
         async function fetchRealSeaData() {
             try {
                 // Always attempt real NOAA data first - no fallbacks allowed
                 // Primary: Buoy 46235 (Imperial Beach Nearshore), Backup: Buoy 46232 (Point Loma South)
                 
-                // Prepare URLs with CORS proxy if needed
-                const buoy46235TxtUrl = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46235.txt');
-                const buoy46235SpecUrl = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46235.spec');
+                // Prepare URLs with mobile fallback system
+                const buoy46235TxtUrl = getMobileFallbackUrls('https://www.ndbc.noaa.gov/data/realtime2/46235.txt');
+                const buoy46235SpecUrl = getMobileFallbackUrls('https://www.ndbc.noaa.gov/data/realtime2/46235.spec');
                 
                 // Try primary buoy 46235 first with timeout
                 let [metResponse, specResponse] = await Promise.allSettled([
@@ -1097,8 +1100,8 @@
                 
                 // If primary buoy fails, try backup buoy 46232
                 if (metResponse.status !== 'fulfilled' || !metResponse.value.ok) {
-                    const buoy46232TxtUrl = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46232.txt');
-                    const buoy46232SpecUrl = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46232.spec');
+                    const buoy46232TxtUrl = getMobileFallbackUrls('https://www.ndbc.noaa.gov/data/realtime2/46232.txt');
+                    const buoy46232SpecUrl = getMobileFallbackUrls('https://www.ndbc.noaa.gov/data/realtime2/46232.spec');
                     
                     [metResponse, specResponse] = await Promise.allSettled([
                         fetchWithTimeout(buoy46232TxtUrl, 12000),
