@@ -2054,27 +2054,53 @@
             
             updateTime();
             
-            // Attempt to fetch real data from all sources
-            console.log('UPDATE DEBUG: Starting Promise.allSettled for all APIs');
-            const results = await Promise.allSettled([
-                fetchRealWeatherData(),
-                fetchWeatherForecast(),
-                fetchRealTideData(), 
-                fetchRealSeaData(),
-                fetchCurrentsData(),
-                fetchEarthquakeData(),
-                fetchTsunamiAlerts(),
-                fetchRealAstronomicalData(),
-                fetchRealNotices(),
-                fetchRealAirQuality(),
-                fetchRealWeatherAlerts()
-            ]);
-            
-            console.log('UPDATE DEBUG: API results summary:');
-            const apiNames = ['Weather', 'Forecast', 'Tides', 'Sea', 'Currents', 'Earthquake', 'Tsunami', 'Astronomical', 'Notices', 'AirQuality', 'WeatherAlerts'];
-            results.forEach((result, index) => {
-                console.log(`UPDATE DEBUG: ${apiNames[index]} - ${result.status}`, result.status === 'rejected' ? result.reason?.message : 'Success');
-            });
+            // For mobile, load APIs one at a time to make debugging readable
+            if (isMobile) {
+                console.log('UPDATE DEBUG: Loading mobile APIs sequentially for better debugging');
+                
+                console.log('MOBILE SEQUENCE: 1/11 - Loading Weather...');
+                await fetchRealWeatherData().catch(() => {});
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                console.log('MOBILE SEQUENCE: 2/11 - Loading Astronomical...');
+                await fetchRealAstronomicalData().catch(() => {});
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                console.log('MOBILE SEQUENCE: 3/11 - Loading Tides...');
+                await fetchRealTideData().catch(() => {});
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                console.log('MOBILE SEQUENCE: 4/11 - Loading Sea Conditions...');
+                await fetchRealSeaData().catch(() => {});
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                console.log('MOBILE SEQUENCE: 5/11 - Loading Air Quality...');
+                await fetchRealAirQuality().catch(() => {});
+                
+                console.log('MOBILE DEBUG: Completed sequential loading - check results above');
+            } else {
+                // Desktop - load all APIs simultaneously
+                console.log('UPDATE DEBUG: Starting Promise.allSettled for all APIs');
+                const results = await Promise.allSettled([
+                    fetchRealWeatherData(),
+                    fetchWeatherForecast(),
+                    fetchRealTideData(), 
+                    fetchRealSeaData(),
+                    fetchCurrentsData(),
+                    fetchEarthquakeData(),
+                    fetchTsunamiAlerts(),
+                    fetchRealAstronomicalData(),
+                    fetchRealNotices(),
+                    fetchRealAirQuality(),
+                    fetchRealWeatherAlerts()
+                ]);
+                
+                console.log('UPDATE DEBUG: API results summary:');
+                const apiNames = ['Weather', 'Forecast', 'Tides', 'Sea', 'Currents', 'Earthquake', 'Tsunami', 'Astronomical', 'Notices', 'AirQuality', 'WeatherAlerts'];
+                results.forEach((result, index) => {
+                    console.log(`UPDATE DEBUG: ${apiNames[index]} - ${result.status}`, result.status === 'rejected' ? result.reason?.message : 'Success');
+                });
+            }
             
             } catch (error) {
                 console.error('UPDATE CYCLE ERROR:', error);
@@ -2114,10 +2140,14 @@
     </script>
 
     <!-- Mobile Debug Panel (only visible on mobile) -->
-    <div id="mobile-debug-panel" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.95); color: #00ff00; font-family: monospace; font-size: 10px; padding: 10px; max-height: 200px; overflow-y: auto; border-top: 2px solid #00ff00; z-index: 9999;">
+    <div id="mobile-debug-panel" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.95); color: #00ff00; font-family: monospace; font-size: 10px; padding: 10px; max-height: 250px; overflow-y: auto; border-top: 2px solid #00ff00; z-index: 9999;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; border-bottom: 1px solid #444; padding-bottom: 5px;">
             <span style="color: #ff6600; font-weight: bold;">📱 MOBILE DEBUG CONSOLE</span>
-            <button onclick="toggleDebugPanel()" style="background: #333; color: #fff; border: 1px solid #666; padding: 2px 8px; font-size: 10px; cursor: pointer;">HIDE</button>
+            <div style="display: flex; gap: 5px;">
+                <button id="pause-debug-btn" onclick="toggleDebugPause()" style="background: #ff6600; color: #fff; border: 1px solid #666; padding: 2px 8px; font-size: 10px; cursor: pointer;">PAUSE</button>
+                <button onclick="clearDebugOutput()" style="background: #666; color: #fff; border: 1px solid #666; padding: 2px 8px; font-size: 10px; cursor: pointer;">CLEAR</button>
+                <button onclick="toggleDebugPanel()" style="background: #333; color: #fff; border: 1px solid #666; padding: 2px 8px; font-size: 10px; cursor: pointer;">HIDE</button>
+            </div>
         </div>
         <div id="debug-output" style="white-space: pre-wrap; line-height: 1.2;"></div>
     </div>
@@ -2131,6 +2161,7 @@
         // Mobile debug logging system
         let debugMessages = [];
         const maxDebugMessages = 50;
+        let debugPaused = false;
 
         // Override console.log for mobile debugging
         const originalConsoleLog = console.log;
@@ -2138,6 +2169,9 @@
         const originalConsoleWarn = console.warn;
 
         function addDebugMessage(type, ...args) {
+            // Don't add messages when paused
+            if (debugPaused) return;
+            
             const timestamp = new Date().toLocaleTimeString();
             const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ');
             
@@ -2195,6 +2229,26 @@
                 panel.style.display = 'none';
                 toggle.style.display = 'block';
             }
+        }
+
+        function toggleDebugPause() {
+            debugPaused = !debugPaused;
+            const pauseBtn = document.getElementById('pause-debug-btn');
+            if (debugPaused) {
+                pauseBtn.textContent = 'RESUME';
+                pauseBtn.style.background = '#10b981';
+                console.log('DEBUG PAUSED - Click RESUME to continue logging');
+            } else {
+                pauseBtn.textContent = 'PAUSE';
+                pauseBtn.style.background = '#ff6600';
+                console.log('DEBUG RESUMED - Logging will continue');
+            }
+        }
+
+        function clearDebugOutput() {
+            debugMessages = [];
+            updateDebugDisplay();
+            console.log('DEBUG CLEARED - Fresh start');
         }
 
         // Show debug controls only on mobile
