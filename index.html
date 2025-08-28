@@ -774,12 +774,8 @@
         async function fetchWeatherForecast() {
             try {
                     
-                const forecastUrl = getCorsProxyUrl('https://api.weather.gov/gridpoints/SGX/64,16/forecast/hourly');
-                const response = await fetch(forecastUrl, {
-                    headers: {
-                        'User-Agent': 'METOC-Dashboard/1.0'
-                    }
-                });
+                const forecastUrl = getMobileFallbackUrls('https://api.weather.gov/gridpoints/SGX/64,16/forecast/hourly');
+                const response = await fetchWithTimeout(forecastUrl);
                 
                 if (!response.ok) throw new Error('Forecast API unavailable');
                 
@@ -1537,8 +1533,8 @@
         async function fetchRealWeatherAlerts() {
             try {
                 
-// Get alerts for San Diego County (zone CAZ043) with mobile timeout
-                const alertsUrl = getCorsProxyUrl('https://api.weather.gov/alerts/active?zone=CAZ043');
+// Get alerts for San Diego County (zone CAZ043) with mobile fallback
+                const alertsUrl = getMobileFallbackUrls('https://api.weather.gov/alerts/active?zone=CAZ043');
                 const response = await fetchWithTimeout(alertsUrl, 8000);
                 
                 if (!response.ok) throw new Error('Weather alerts API unavailable');
@@ -1641,8 +1637,8 @@
                 const lng = -117.1611; // San Diego longitude
                 const today = new Date().toISOString().split('T')[0];
                 
-                const sunriseUrl = getCorsProxyUrl(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&date=${today}&formatted=0`);
-                const response = await fetch(sunriseUrl);
+                const sunriseUrl = getMobileFallbackUrls(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&date=${today}&formatted=0`);
+                const response = await fetchWithTimeout(sunriseUrl);
                 const data = await response.json();
                 
                 if (data.status === 'OK') {
@@ -1823,9 +1819,9 @@
         // Fetch real air quality data from EPA AirNow
         async function fetchRealAirQuality() {
             try {
-// EPA AirNow API endpoint for San Diego (zip code 92101)
-                const airQualityUrl = getCorsProxyUrl(`https://www.airnowapi.org/aq/observation/zipCode/current/?format=application/json&API_KEY=64CC1372-9F33-4AA3-8788-9AB1C2AE9E12&zipCode=92101&distance=25`);
-                const response = await fetch(airQualityUrl);
+// EPA AirNow API endpoint for San Diego (zip code 92101) with mobile fallback
+                const airQualityUrl = getMobileFallbackUrls(`https://www.airnowapi.org/aq/observation/zipCode/current/?format=application/json&API_KEY=64CC1372-9F33-4AA3-8788-9AB1C2AE9E12&zipCode=92101&distance=25`);
+                const response = await fetchWithTimeout(airQualityUrl);
                 
                 if (!response.ok) throw new Error('EPA AirNow API unavailable');
                 
