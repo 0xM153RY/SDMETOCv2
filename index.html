@@ -648,54 +648,63 @@
             }
         }
 
-        // Enhanced fetch with mobile fallback system
+        // Enhanced fetch with mobile fallback system - ULTRA AGGRESSIVE
         async function fetchWithTimeout(url, timeout = 10000) {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
             // Mobile fallback system - try multiple proxy methods
             if (isMobile && typeof url === 'object' && url.primary) {
-                const urls = [url.primary, url.secondary, url.tertiary];
-                const mobileTimeout = 6000; // Very aggressive timeout for mobile
+                // Try completely different proxy services for mobile
+                const mobileProxies = [
+                    'https://cors-anywhere.herokuapp.com/' + url.original,
+                    'https://api.allorigins.win/raw?url=' + encodeURIComponent(url.original),
+                    'https://thingproxy.freeboard.io/fetch/' + url.original,
+                    'https://proxy.cors.sh/' + url.original,
+                    url.original // Direct as last resort
+                ];
                 
-                for (let i = 0; i < urls.length; i++) {
-                    const currentUrl = urls[i];
-                    const method = ['primary', 'secondary', 'direct'][i];
+                const mobileTimeout = 4000; // Even more aggressive timeout
+                
+                for (let i = 0; i < mobileProxies.length; i++) {
+                    const proxyUrl = mobileProxies[i];
+                    const method = ['cors-anywhere', 'allorigins', 'thingproxy', 'cors.sh', 'direct'][i];
                     
-                    console.log(`MOBILE: Trying ${method} proxy:`, currentUrl.substring(0, 50));
+                    console.log(`MOBILE: Trying ${method}:`, proxyUrl.substring(0, 60));
                     
                     try {
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), mobileTimeout);
                         
-                        const response = await fetch(currentUrl, {
+                        const response = await fetch(proxyUrl, {
                             signal: controller.signal,
                             headers: {
-                                'User-Agent': 'METOC-Dashboard/1.0'
+                                'User-Agent': 'METOC-Dashboard/1.0',
+                                'X-Requested-With': 'XMLHttpRequest'
                             }
                         });
                         
                         clearTimeout(timeoutId);
                         
                         if (response.ok) {
-                            console.log(`MOBILE: SUCCESS with ${method} proxy`);
+                            console.log(`MOBILE: SUCCESS with ${method}!`);
                             return response;
                         } else {
-                            console.log(`MOBILE: ${method} proxy returned ${response.status}`);
+                            console.log(`MOBILE: ${method} returned ${response.status}`);
                         }
                         
                     } catch (error) {
-                        console.error(`MOBILE: ${method} proxy failed:`, error.message);
-                        if (i === urls.length - 1) {
-                            throw new Error('All mobile proxy methods failed');
+                        console.error(`MOBILE: ${method} failed:`, error.message);
+                        if (i === mobileProxies.length - 1) {
+                            throw new Error(`All ${mobileProxies.length} mobile proxy methods failed`);
                         }
-                        // Continue to next proxy method
+                        // Continue to next proxy method immediately
                     }
                 }
             }
             
             // Desktop or single URL fallback to original method
             const controller = new AbortController();
-            const finalTimeout = isMobile ? 6000 : timeout;
+            const finalTimeout = isMobile ? 4000 : timeout;
             const timeoutId = setTimeout(() => controller.abort(), finalTimeout);
             
             try {
@@ -763,10 +772,14 @@
                 
             } catch (error) {
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                const offlineText = isMobile ? 'Network Issue' : 'Offline';
+                const errorText = isMobile ? 'Mobile Network Issue' : 'Offline';
                 
-                updateElement('temp-display', offlineText);
+                updateElement('temp-display', errorText);
                 updateElement('wind-speed', 'N/A');
+                updateElement('wind-direction', 'N/A');
+                updateElement('humidity', 'N/A');
+                updateElement('pressure', 'N/A');
+                updateElement('visibility', 'N/A');
             }
         }
 
@@ -1058,23 +1071,26 @@
             return originalUrl;
         }
 
-        // Special mobile fallback URL generator
+        // Mobile-first fallback system with offline data
         function getMobileFallbackUrls(originalUrl) {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
             if (isMobile && (window.location.hostname.includes('github.io') || 
                            (window.location.protocol === 'https:' && window.location.hostname !== 'localhost'))) {
+                console.log('MOBILE: Generating fallback for', originalUrl.substring(0, 50));
                 return {
                     primary: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl),
                     secondary: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(originalUrl),
                     tertiary: originalUrl,
-                    original: originalUrl
+                    original: originalUrl,
+                    isMobile: true
                 };
             }
             
             // Not mobile or not hosted - return regular URL
             return getCorsProxyUrl(originalUrl);
         }
+
 
         // Fetch enhanced real sea conditions from NOAA buoy with spectral wave data
         async function fetchRealSeaData() {
@@ -1226,11 +1242,8 @@
                 
             } catch (error) {
                 console.error('SEA CONDITIONS ERROR:', error.message);
-                console.log('SEA CONDITIONS ERROR: Full error object:', error);
-                
-                // Only show "Unavailable" - no fallback or simulated data allowed
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                const errorText = isMobile ? 'Network Issue' : 'Unavailable';
+                const errorText = isMobile ? 'Mobile Network Issue' : 'Unavailable';
                 
                 updateElement('wave-height', errorText);
                 updateElement('wave-period', errorText);
@@ -1921,17 +1934,18 @@
                 }
                 
             } catch (error) {
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                const errorText = isMobile ? 'Mobile Network Issue' : 'Unavailable';
                 
-                // Update UI with error state
                 const aqiIndex = document.getElementById('aqi-index');
                 const aqiPollutant = document.getElementById('aqi-pollutant');
                 const aqiCategory = document.getElementById('aqi-category');
                 const aqiTime = document.getElementById('aqi-time');
                 
-                if (aqiIndex) aqiIndex.textContent = 'Unavailable';
-                if (aqiPollutant) aqiPollutant.textContent = 'Unavailable';
-                if (aqiCategory) aqiCategory.textContent = 'Unavailable';
-                if (aqiTime) aqiTime.textContent = 'Unavailable';
+                if (aqiIndex) aqiIndex.textContent = errorText;
+                if (aqiPollutant) aqiPollutant.textContent = errorText;
+                if (aqiCategory) aqiCategory.textContent = errorText;
+                if (aqiTime) aqiTime.textContent = errorText;
             }
         }
 
