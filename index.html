@@ -889,15 +889,18 @@
         // Fetch real tide data from NOAA
         async function fetchRealTideData() {
             try {
+                console.log('TIDES DEBUG: Starting fetch');
                 
                 // Get current Pacific time for date range
                 const now = new Date();
                 const pstNow = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
                 const today = pstNow.toISOString().split('T')[0].replace(/-/g, '');
                 const tomorrow = new Date(pstNow.getTime() + 24*60*60*1000).toISOString().split('T')[0].replace(/-/g, '');
+                console.log('TIDES DEBUG: Date range:', today, 'to', tomorrow);
                 
                 // Fetch both predictions and current water level  
                 const predUrl = getMobileFallbackUrls(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${today}&end_date=${tomorrow}&station=9410170&product=predictions&datum=mllw&units=english&time_zone=lst_ldt&format=json&interval=hilo`);
+                console.log('TIDES DEBUG: Predictions URL generated:', predUrl);
                 const currentUrl = getMobileFallbackUrls(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=9410170&product=water_level&datum=mllw&units=english&time_zone=lst_ldt&format=json`);
                 
                 console.log('TIDE URLS:', { predUrl, currentUrl });
@@ -908,10 +911,35 @@
                     fetchWithTimeout(currentUrl)
                 ]);
                 
-                if (predResponse.status !== 'fulfilled' || !predResponse.value.ok) throw new Error('Tide predictions API unavailable');
+                console.log('TIDES DEBUG: Response statuses:', {
+                    pred: predResponse.status,
+                    current: currentResponse.status
+                });
                 
-                const data = await predResponse.value.json();
+                if (predResponse.status !== 'fulfilled') {
+                    console.error('TIDES DEBUG: Predictions failed:', predResponse.reason);
+                    throw new Error('Tide predictions API unavailable');
+                }
+                
+                if (!predResponse.value.ok) {
+                    console.error('TIDES DEBUG: Predictions HTTP error:', predResponse.value.status);
+                    throw new Error('Tide predictions API unavailable');
+                }
+                
+                const predText = await predResponse.value.text();
+                console.log('TIDES DEBUG: Predictions raw response:', predText.substring(0, 300));
+                
+                let data;
+                try {
+                    data = JSON.parse(predText);
+                    console.log('TIDES DEBUG: Predictions parsed data:', data);
+                } catch (parseError) {
+                    console.error('TIDES DEBUG: Predictions JSON parse failed:', parseError);
+                    throw new Error('Failed to parse tide predictions JSON');
+                }
+                
                 const predictions = data.predictions;
+                console.log('TIDES DEBUG: Predictions array length:', predictions?.length);
                 
                 // Get current water level
                 let currentLevel = null;
@@ -1703,6 +1731,7 @@
         // Fetch real-time astronomical data
         async function fetchRealAstronomicalData() {
             try {
+                console.log('ASTRONOMICAL DEBUG: Starting fetch');
                 
                 // Use sunrise-sunset.org API for San Diego coordinates
                 const lat = 32.7157;  // San Diego latitude
@@ -1710,8 +1739,24 @@
                 const today = new Date().toISOString().split('T')[0];
                 
                 const sunriseUrl = getMobileFallbackUrls(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&date=${today}&formatted=0`);
+                console.log('ASTRONOMICAL DEBUG: URL generated:', sunriseUrl);
+                
                 const response = await fetchWithTimeout(sunriseUrl);
-                const data = await response.json();
+                console.log('ASTRONOMICAL DEBUG: Response received, status:', response.status);
+                console.log('ASTRONOMICAL DEBUG: Response headers:', [...response.headers.entries()]);
+                
+                const responseText = await response.text();
+                console.log('ASTRONOMICAL DEBUG: Raw response text:', responseText.substring(0, 200));
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                    console.log('ASTRONOMICAL DEBUG: Parsed JSON:', data);
+                } catch (parseError) {
+                    console.error('ASTRONOMICAL DEBUG: JSON parse failed:', parseError);
+                    console.log('ASTRONOMICAL DEBUG: Full response text:', responseText);
+                    throw new Error('Failed to parse astronomical data JSON');
+                }
                 
                 if (data.status === 'OK') {
                     const results = data.results;
