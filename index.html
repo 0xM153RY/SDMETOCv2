@@ -1089,11 +1089,10 @@
                            (window.location.protocol === 'https:' && window.location.hostname !== 'localhost'))) {
                 console.log('MOBILE: Creating mobile-optimized strategy for:', originalUrl.substring(0, 50));
                 
-                // Mobile strategy: Try APIs that commonly work on mobile networks first
+                // Mobile strategy: Optimize based on API patterns observed
                 if (originalUrl.includes('api.weather.gov') || 
-                    originalUrl.includes('api.sunrise-sunset.org') || 
-                    originalUrl.includes('earthquake.usgs.gov')) {
-                    // These APIs often work directly on mobile
+                    originalUrl.includes('api.sunrise-sunset.org')) {
+                    // These APIs work directly on mobile - try direct first
                     return {
                         primary: originalUrl,
                         secondary: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl),
@@ -1101,6 +1100,19 @@
                         original: originalUrl,
                         isMobile: true,
                         mobileFriendly: true
+                    };
+                } else if (originalUrl.includes('tidesandcurrents.noaa.gov') ||
+                          originalUrl.includes('ndbc.noaa.gov') ||
+                          originalUrl.includes('airnowapi.org') ||
+                          originalUrl.includes('earthquake.usgs.gov')) {
+                    // These APIs need proxy on mobile - try allorigins first
+                    return {
+                        primary: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl),
+                        secondary: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(originalUrl),
+                        tertiary: originalUrl, // Try direct as last resort
+                        original: originalUrl,
+                        isMobile: true,
+                        mobileFriendly: true // Still mobile-friendly, just needs proxy first
                     };
                 } else {
                     // For other APIs, try proven mobile-working proxies only
