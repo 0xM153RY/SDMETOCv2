@@ -655,104 +655,53 @@
             console.log('FETCH DEBUG: isMobile =', isMobile, 'userAgent =', navigator.userAgent.substring(0, 50));
             console.log('FETCH DEBUG: url type =', typeof url, 'url =', url);
             
-            // Mobile fallback system - try multiple proxy methods
-            if (isMobile && typeof url === 'object' && url.primary) {
-                console.log('MOBILE DEBUG: Using mobile proxy system for', url.original?.substring(0, 50));
+            // Mobile network optimization - fast failure for mobile networks
+            if (isMobile && typeof url === 'object' && url.mobileOnly) {
+                console.log('MOBILE: Attempting direct connection (mobile-optimized) for', url.original?.substring(0, 50));
                 
-                // Try completely different proxy services for mobile with longer timeouts
-                const mobileProxies = [
-                    {
-                        url: 'https://api.allorigins.win/get?url=' + encodeURIComponent(url.original),
-                        method: 'allorigins-json',
-                        parseJSON: true
-                    },
-                    {
-                        url: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url.original),
-                        method: 'codetabs',
-                        parseJSON: false
-                    },
-                    {
-                        url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url.original),
-                        method: 'allorigins-raw',
-                        parseJSON: false
-                    },
-                    {
-                        url: url.original,
-                        method: 'direct',
-                        parseJSON: false
-                    }
-                ];
+                const mobileTimeout = 5000; // Fast timeout for mobile - fail quickly
+                console.log('MOBILE: Using direct connection with', mobileTimeout, 'ms timeout');
                 
-                const mobileTimeout = 12000; // Much longer timeout for mobile networks
-                console.log('MOBILE DEBUG: Will try', mobileProxies.length, 'proxy methods with', mobileTimeout, 'ms timeout');
-                
-                for (let i = 0; i < mobileProxies.length; i++) {
-                    const proxy = mobileProxies[i];
-                    const method = proxy.method;
+                try {
+                    const startTime = Date.now();
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => {
+                        console.log('MOBILE: Direct connection timed out after', mobileTimeout, 'ms');
+                        controller.abort();
+                    }, mobileTimeout);
                     
-                    console.log(`MOBILE DEBUG: Attempt ${i+1}/${mobileProxies.length} - Trying ${method}:`, proxy.url.substring(0, 80));
+                    const response = await fetch(url.original, {
+                        signal: controller.signal,
+                        method: 'GET',
+                        mode: 'cors', // Try CORS first
+                        headers: {
+                            'User-Agent': 'METOC-Dashboard/1.0 Mobile'
+                        }
+                    });
                     
-                    try {
-                        const startTime = Date.now();
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => {
-                            console.log(`MOBILE TIMEOUT: ${method} timed out after ${mobileTimeout}ms`);
-                            controller.abort();
-                        }, mobileTimeout);
-                        
-                        const response = await fetch(proxy.url, {
-                            signal: controller.signal,
-                            method: 'GET',
-                            headers: {
-                                'User-Agent': 'METOC-Dashboard/1.0 Mobile',
-                                'Accept': 'application/json, text/plain, */*',
-                                'Cache-Control': 'no-cache'
-                            }
-                        });
-                        
-                        clearTimeout(timeoutId);
-                        const duration = Date.now() - startTime;
-                        
-                        console.log(`MOBILE RESULT: ${method} responded in ${duration}ms with status ${response.status}`);
-                        
-                        if (response.ok) {
-                            console.log(`MOBILE SUCCESS: ${method} worked! Status: ${response.status}, Content-Type: ${response.headers.get('content-type')}`);
-                            
-                            // Handle allorigins JSON response format
-                            if (proxy.parseJSON) {
-                                const data = await response.json();
-                                if (data.contents) {
-                                    // Create a new response with the actual content
-                                    const actualResponse = new Response(data.contents, {
-                                        status: response.status,
-                                        statusText: response.statusText,
-                                        headers: response.headers
-                                    });
-                                    return actualResponse;
-                                }
-                            }
-                            
-                            return response;
-                        } else {
-                            console.warn(`MOBILE FAIL: ${method} returned HTTP ${response.status} ${response.statusText}`);
-                        }
-                        
-                    } catch (error) {
-                        const errorType = error.name === 'AbortError' ? 'TIMEOUT' : 'ERROR';
-                        console.error(`MOBILE ${errorType}: ${method} failed -`, error.message);
-                        console.error(`MOBILE ${errorType}: Full error:`, error);
-                        
-                        if (i === mobileProxies.length - 1) {
-                            console.error(`MOBILE FINAL FAIL: All ${mobileProxies.length} proxy methods failed for`, url.original?.substring(0, 50));
-                            throw new Error(`All ${mobileProxies.length} mobile proxy methods failed`);
-                        }
+                    clearTimeout(timeoutId);
+                    const duration = Date.now() - startTime;
+                    
+                    console.log(`MOBILE: Direct connection responded in ${duration}ms with status ${response.status}`);
+                    
+                    if (response.ok) {
+                        console.log('MOBILE: Direct connection SUCCESS!');
+                        return response;
+                    } else {
+                        throw new Error(`Direct connection failed: HTTP ${response.status}`);
                     }
+                    
+                } catch (error) {
+                    const errorType = error.name === 'AbortError' ? 'TIMEOUT' : 'ERROR';
+                    console.error(`MOBILE DIRECT ${errorType}:`, error.message);
+                    console.log('MOBILE: Mobile network cannot access external APIs - will show "Mobile Network Issue"');
+                    throw new Error('Mobile network limitations prevent API access');
                 }
             }
             
             // Desktop or single URL fallback to original method
             const controller = new AbortController();
-            const finalTimeout = isMobile ? 12000 : timeout;
+            const finalTimeout = timeout;
             const timeoutId = setTimeout(() => controller.abort(), finalTimeout);
             
             try {
@@ -1119,23 +1068,27 @@
             return originalUrl;
         }
 
-        // Mobile-first fallback system with offline data
+        // Mobile network optimization - try mobile-friendly endpoints first  
         function getMobileFallbackUrls(originalUrl) {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
             if (isMobile && (window.location.hostname.includes('github.io') || 
                            (window.location.protocol === 'https:' && window.location.hostname !== 'localhost'))) {
-                console.log('MOBILE: Generating fallback for', originalUrl.substring(0, 50));
+                console.log('MOBILE: Optimizing endpoint for mobile networks:', originalUrl.substring(0, 50));
+                
+                // For mobile, skip proxy entirely and show unavailable immediately if direct fails
+                // This maintains data integrity while acknowledging mobile network limitations
                 return {
-                    primary: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl),
-                    secondary: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(originalUrl),
-                    tertiary: originalUrl,
+                    primary: originalUrl, // Try direct first
+                    secondary: null,
+                    tertiary: null,
                     original: originalUrl,
-                    isMobile: true
+                    isMobile: true,
+                    mobileOnly: true // Flag for mobile-specific handling
                 };
             }
             
-            // Not mobile or not hosted - return regular URL
+            // Not mobile - use regular CORS proxy system
             return getCorsProxyUrl(originalUrl);
         }
 
