@@ -655,11 +655,11 @@
             console.log('FETCH DEBUG: isMobile =', isMobile, 'userAgent =', navigator.userAgent.substring(0, 50));
             console.log('FETCH DEBUG: url type =', typeof url, 'url =', url);
             
-            // Mobile strategy - simple approach for all APIs
-            if (isMobile && typeof url === 'object' && url.mobileFriendly) {
-                console.log('MOBILE: Using simple mobile strategy for', url.original?.substring(0, 50));
+            // Mobile alternative strategy - try different techniques
+            if (isMobile && typeof url === 'object' && url.mobileAlternative) {
+                console.log('MOBILE: Using alternative mobile techniques for', url.original?.substring(0, 50));
                 
-                const mobileTimeout = 15000; // Extended timeout for slow mobile networks
+                const mobileTimeout = 10000; // Focused timeout for targeted mobile techniques
                 const urlsToTry = [url.primary, url.secondary, url.tertiary].filter(u => u !== null);
                 
                 console.log('MOBILE: Will try', urlsToTry.length, 'URLs with', mobileTimeout, 'ms timeout each');
@@ -1084,23 +1084,58 @@
             return originalUrl;
         }
 
-        // Simple mobile strategy that was working
+        // Alternative mobile strategy - use different endpoints that work on mobile
         function getMobileFallbackUrls(originalUrl) {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
             if (isMobile && (window.location.hostname.includes('github.io') || 
                            (window.location.protocol === 'https:' && window.location.hostname !== 'localhost'))) {
-                console.log('MOBILE: Using simple mobile strategy for:', originalUrl.substring(0, 50));
+                console.log('MOBILE: Using alternative mobile endpoints for:', originalUrl.substring(0, 50));
                 
-                // Simple mobile approach - try allorigins first for all APIs
-                return {
-                    primary: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl),
-                    secondary: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(originalUrl),
-                    tertiary: originalUrl,
-                    original: originalUrl,
-                    isMobile: true,
-                    mobileFriendly: true
-                };
+                // Alternative mobile endpoints that bypass CORS issues
+                if (originalUrl.includes('api.sunrise-sunset.org')) {
+                    // Sunrise-sunset often works directly on mobile
+                    return {
+                        primary: originalUrl,
+                        secondary: null,
+                        tertiary: null,
+                        original: originalUrl,
+                        isMobile: true,
+                        mobileAlternative: true
+                    };
+                } else if (originalUrl.includes('tidesandcurrents.noaa.gov')) {
+                    // Try NOAA with different format that might work better on mobile
+                    const mobileUrl = originalUrl.replace('format=json', 'format=json&callback=?');
+                    return {
+                        primary: 'https://cors-anywhere.herokuapp.com/' + originalUrl,
+                        secondary: mobileUrl,
+                        tertiary: originalUrl,
+                        original: originalUrl,
+                        isMobile: true,
+                        mobileAlternative: true
+                    };
+                } else if (originalUrl.includes('earthquake.usgs.gov')) {
+                    // USGS often works with JSONP
+                    const jsonpUrl = originalUrl.includes('?') ? originalUrl + '&callback=?' : originalUrl + '?callback=?';
+                    return {
+                        primary: jsonpUrl,
+                        secondary: originalUrl,
+                        tertiary: 'https://cors-anywhere.herokuapp.com/' + originalUrl,
+                        original: originalUrl,
+                        isMobile: true,
+                        mobileAlternative: true
+                    };
+                } else {
+                    // For other APIs, try the most reliable single proxy
+                    return {
+                        primary: 'https://cors-anywhere.herokuapp.com/' + originalUrl,
+                        secondary: originalUrl,
+                        tertiary: null,
+                        original: originalUrl,
+                        isMobile: true,
+                        mobileAlternative: true
+                    };
+                }
             }
             
             // Desktop - maintain full original proxy system
