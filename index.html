@@ -655,51 +655,63 @@
             console.log('FETCH DEBUG: isMobile =', isMobile, 'userAgent =', navigator.userAgent.substring(0, 50));
             console.log('FETCH DEBUG: url type =', typeof url, 'url =', url);
             
-            // Mobile direct strategy - bypass 403-prone CORS proxies
-            if (isMobile && typeof url === 'object' && url.mobileDirect) {
-                console.log('MOBILE: Using direct connection (bypassing 403-prone proxies) for', url.original?.substring(0, 50));
+            // Mobile alternative endpoints strategy
+            if (isMobile && typeof url === 'object' && (url.mobileDirect || url.mobileAlternative)) {
+                const strategy = url.mobileAlternative ? 'alternative endpoints' : 'direct connection';
+                console.log(`MOBILE: Using ${strategy} for`, url.original?.substring(0, 50));
                 
-                const mobileTimeout = 8000; // Direct connection timeout
+                const mobileTimeout = 10000; // Extended timeout for alternative endpoints
+                const urlsToTry = [url.primary, url.secondary, url.tertiary].filter(u => u !== null);
                 
-                try {
-                    const startTime = Date.now();
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => {
-                        console.log('MOBILE: Direct connection timed out after', mobileTimeout, 'ms');
-                        controller.abort();
-                    }, mobileTimeout);
+                console.log('MOBILE: Will try', urlsToTry.length, 'alternative endpoints:', urlsToTry.map(u => u.substring(0, 60)));
+                
+                for (let i = 0; i < urlsToTry.length; i++) {
+                    const currentUrl = urlsToTry[i];
+                    const urlType = i === 0 ? 'primary' : (i === 1 ? 'secondary' : 'tertiary');
                     
-                    console.log('MOBILE: Trying direct connection to:', url.original.substring(0, 70));
-                    
-                    const response = await fetch(url.original, {
-                        signal: controller.signal,
-                        method: 'GET',
-                        mode: 'cors',
-                        headers: {
-                            'Accept': 'application/json, text/plain, */*',
-                            'Origin': window.location.origin
+                    try {
+                        const startTime = Date.now();
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => {
+                            console.log(`MOBILE: ${urlType} endpoint timed out after ${mobileTimeout}ms`);
+                            controller.abort();
+                        }, mobileTimeout);
+                        
+                        console.log(`MOBILE: Trying ${urlType} endpoint:`, currentUrl.substring(0, 70));
+                        
+                        const response = await fetch(currentUrl, {
+                            signal: controller.signal,
+                            method: 'GET',
+                            mode: 'cors',
+                            headers: {
+                                'Accept': 'application/json, application/xml, text/plain, text/xml, */*',
+                                'User-Agent': 'METOC-Dashboard/1.0 Mobile'
+                            }
+                        });
+                        
+                        clearTimeout(timeoutId);
+                        const duration = Date.now() - startTime;
+                        
+                        console.log(`MOBILE: ${urlType} responded in ${duration}ms with status ${response.status}`);
+                        
+                        if (response.ok) {
+                            console.log(`MOBILE SUCCESS: ${urlType} endpoint worked!`);
+                            return response;
+                        } else {
+                            console.warn(`MOBILE: ${urlType} failed with HTTP ${response.status}`);
                         }
-                    });
-                    
-                    clearTimeout(timeoutId);
-                    const duration = Date.now() - startTime;
-                    
-                    console.log(`MOBILE: Direct connection responded in ${duration}ms with status ${response.status}`);
-                    
-                    if (response.ok) {
-                        console.log('MOBILE SUCCESS: Direct connection worked!');
-                        return response;
-                    } else {
-                        console.error('MOBILE: Direct connection failed with HTTP', response.status);
-                        throw new Error(`Direct connection failed: HTTP ${response.status}`);
+                        
+                    } catch (error) {
+                        const errorType = error.name === 'AbortError' ? 'TIMEOUT' : 'ERROR';
+                        console.error(`MOBILE ${errorType}: ${urlType} failed -`, error.message);
+                        
+                        if (i === urlsToTry.length - 1) {
+                            throw new Error(`All ${urlsToTry.length} mobile alternative endpoints failed`);
+                        }
+                        
+                        // Small delay before trying next endpoint
+                        await new Promise(resolve => setTimeout(resolve, 500));
                     }
-                    
-                } catch (error) {
-                    const errorType = error.name === 'AbortError' ? 'TIMEOUT' : 'CORS_ERROR';
-                    console.error(`MOBILE ${errorType}: Direct connection failed -`, error.message);
-                    
-                    // For mobile, show network issue instead of trying failing proxies
-                    throw new Error('Mobile network cannot access external APIs directly - CORS blocked');
                 }
             }
             
@@ -1100,22 +1112,57 @@
             return originalUrl;
         }
 
-        // Mobile 403-bypass strategy - avoid problematic CORS proxies
+        // Mobile alternative endpoints - try mobile-friendly NOAA APIs
         function getMobileFallbackUrls(originalUrl) {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
             if (isMobile && (window.location.hostname.includes('github.io') || 
                            (window.location.protocol === 'https:' && window.location.hostname !== 'localhost'))) {
-                console.log('MOBILE: Bypassing 403-prone proxies for:', originalUrl.substring(0, 50));
+                console.log('MOBILE: Trying alternative endpoints for:', originalUrl.substring(0, 50));
                 
-                // Mobile strategy: Try direct connections with CORS headers
+                // Try alternative NOAA endpoints that may have better mobile CORS support
+                if (originalUrl.includes('ndbc.noaa.gov/data/realtime2')) {
+                    // Extract buoy ID and try alternative formats
+                    const buoyMatch = originalUrl.match(/(\d+)\.(txt|spec)/);
+                    if (buoyMatch) {
+                        const buoyId = buoyMatch[1];
+                        const dataType = buoyMatch[2];
+                        console.log('MOBILE: Trying alternative buoy formats for', buoyId);
+                        
+                        return {
+                            primary: `https://www.ndbc.noaa.gov/data/latest_obs/${buoyId}.rss`, // RSS format
+                            secondary: `https://www.ndbc.noaa.gov/data/5day2/${buoyId}_5day.txt`, // 5-day format  
+                            tertiary: originalUrl, // Original as last resort
+                            original: originalUrl,
+                            isMobile: true,
+                            mobileAlternative: true
+                        };
+                    }
+                } else if (originalUrl.includes('tidesandcurrents.noaa.gov')) {
+                    // Try NOAA CO-OPS alternative formats and shorter time windows
+                    console.log('MOBILE: Trying NOAA CO-OPS alternatives');
+                    const altUrl = originalUrl
+                        .replace('format=json', 'format=xml') // Try XML instead of JSON
+                        .replace(/begin_date=\d+&end_date=\d+/, 'date=latest'); // Use latest instead of date range
+                        
+                    return {
+                        primary: altUrl, // XML format with latest data
+                        secondary: originalUrl.replace(/begin_date=\d+&end_date=\d+/, 'date=latest'), // JSON with latest
+                        tertiary: originalUrl, // Original
+                        original: originalUrl,
+                        isMobile: true,
+                        mobileAlternative: true
+                    };
+                }
+                
+                // Default: try original with mobile-friendly headers
                 return {
-                    primary: originalUrl, // Try direct first
+                    primary: originalUrl,
                     secondary: null,
                     tertiary: null,
                     original: originalUrl,
                     isMobile: true,
-                    mobileDirect: true // Flag for mobile direct connection
+                    mobileDirect: true
                 };
             }
             
