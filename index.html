@@ -1321,10 +1321,14 @@
                         updateElement('tidal-current', tidalCurrent);
                         
                     } else {
+                        console.log('SURFACE CURRENTS DEBUG: No current_predictions in data or empty array');
+                        console.log('SURFACE CURRENTS DEBUG: Available data keys:', Object.keys(data));
+                        console.log('SURFACE CURRENTS DEBUG: Full response data:', JSON.stringify(data, null, 2));
                         throw new Error('No current data available');
                     }
                 } else {
-                    throw new Error('Currents API unavailable');
+                    console.log('SURFACE CURRENTS DEBUG: HTTP Response not OK - Status:', response.status, response.statusText);
+                    throw new Error(`Currents API HTTP ${response.status}`);
                 }
                 
             } catch (error) {
@@ -1931,16 +1935,33 @@
                 console.log('AIR QUALITY: Trying EPA AirNow (different domain from working NOAA APIs)');
                 
                 const response = await fetchWithTimeout(airQualityUrl);
+                console.log('AIR QUALITY DEBUG: HTTP Response status:', response.status, response.statusText);
+                console.log('AIR QUALITY DEBUG: Response headers:', [...response.headers.entries()]);
                 
-                if (!response.ok) throw new Error('EPA AirNow API unavailable');
+                if (!response.ok) throw new Error(`EPA AirNow API HTTP ${response.status}`);
                 
-                const data = await response.json();
+                const responseText = await response.text();
+                console.log('AIR QUALITY DEBUG: Raw response text (first 500 chars):', responseText.substring(0, 500));
+                console.log('AIR QUALITY DEBUG: Response text length:', responseText.length);
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                    console.log('AIR QUALITY DEBUG: JSON parse successful');
+                } catch (parseError) {
+                    console.log('AIR QUALITY DEBUG: JSON parse failed:', parseError.message);
+                    console.log('AIR QUALITY DEBUG: Response might not be JSON:', responseText);
+                    throw new Error('Invalid JSON response');
+                }
                 
                 console.log('AIR QUALITY DEBUG: Response data:', data);
                 console.log('AIR QUALITY DEBUG: Data length:', data?.length);
                 
                 if (data && data.length > 0) {
                     console.log('AIR QUALITY DEBUG: Found', data.length, 'readings');
+                    console.log('AIR QUALITY DEBUG: First reading structure:', Object.keys(data[0]));
+                    console.log('AIR QUALITY DEBUG: Sample reading data:', JSON.stringify(data[0], null, 2));
+                    
                     // Get the primary pollutant with highest AQI
                     let primaryData = data[0];
                     for (const reading of data) {
@@ -1948,6 +1969,8 @@
                             primaryData = reading;
                         }
                     }
+                    
+                    console.log('AIR QUALITY DEBUG: Primary data selected:', JSON.stringify(primaryData, null, 2));
                     
                     // Update AQI index
                     const aqiIndex = document.getElementById('aqi-index');
@@ -1994,6 +2017,10 @@
                     }
                     
                 } else {
+                    console.log('AIR QUALITY DEBUG: Data check failed - data:', data);
+                    console.log('AIR QUALITY DEBUG: Data type:', typeof data);
+                    console.log('AIR QUALITY DEBUG: Data is array:', Array.isArray(data));
+                    console.log('AIR QUALITY DEBUG: Data length check:', data ? data.length : 'data is falsy');
                     throw new Error('No air quality data available');
                 }
                 
