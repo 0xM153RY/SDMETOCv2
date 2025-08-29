@@ -649,7 +649,7 @@
         }
 
         // Enhanced fetch with mobile fallback system - ULTRA AGGRESSIVE DEBUG
-        async function fetchWithTimeout(url, timeout = 10000) {
+        async function fetchWithTimeout(url, timeout = 30000) { // More patient default timeout
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
             console.log('FETCH DEBUG: isMobile =', isMobile, 'userAgent =', navigator.userAgent.substring(0, 50));
@@ -660,10 +660,9 @@
                 const strategy = url.mobileAlternative ? 'alternative endpoints' : 'direct connection';
                 console.log(`MOBILE: Using ${strategy} for`, url.original?.substring(0, 50));
                 
-                const mobileTimeout = 10000; // Extended timeout for alternative endpoints
                 const urlsToTry = [url.primary, url.secondary, url.tertiary].filter(u => u !== null);
                 
-                console.log('MOBILE: Will try', urlsToTry.length, 'alternative endpoints:', urlsToTry.map(u => u.substring(0, 60)));
+                console.log('MOBILE: Will try', urlsToTry.length, 'alternative endpoints (no timeout limits):', urlsToTry.map(u => u.substring(0, 60)));
                 
                 for (let i = 0; i < urlsToTry.length; i++) {
                     const currentUrl = urlsToTry[i];
@@ -671,16 +670,10 @@
                     
                     try {
                         const startTime = Date.now();
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => {
-                            console.log(`MOBILE: ${urlType} endpoint timed out after ${mobileTimeout}ms`);
-                            controller.abort();
-                        }, mobileTimeout);
                         
-                        console.log(`MOBILE: Trying ${urlType} endpoint:`, currentUrl.substring(0, 70));
+                        console.log(`MOBILE: Trying ${urlType} endpoint (patient mode):`, currentUrl.substring(0, 70));
                         
                         const response = await fetch(currentUrl, {
-                            signal: controller.signal,
                             method: 'GET',
                             mode: 'cors',
                             headers: {
@@ -689,7 +682,6 @@
                             }
                         });
                         
-                        clearTimeout(timeoutId);
                         const duration = Date.now() - startTime;
                         
                         console.log(`MOBILE: ${urlType} responded in ${duration}ms with status ${response.status}`);
@@ -702,15 +694,14 @@
                         }
                         
                     } catch (error) {
-                        const errorType = error.name === 'AbortError' ? 'TIMEOUT' : 'ERROR';
-                        console.error(`MOBILE ${errorType}: ${urlType} failed -`, error.message);
+                        console.error(`MOBILE ERROR: ${urlType} failed -`, error.message);
                         
                         if (i === urlsToTry.length - 1) {
                             throw new Error(`All ${urlsToTry.length} mobile alternative endpoints failed`);
                         }
                         
-                        // Small delay before trying next endpoint
-                        await new Promise(resolve => setTimeout(resolve, 500));
+                        console.log('MOBILE: Waiting before trying next endpoint...');
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                     }
                 }
             }
