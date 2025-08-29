@@ -1127,6 +1127,8 @@
         // Fetch enhanced real sea conditions from NOAA buoy with spectral wave data
         async function fetchRealSeaData() {
             try {
+                console.log('SEA CONDITIONS DEBUG: Starting fetch');
+                
                 // Always attempt real NOAA data first - no fallbacks allowed
                 // Primary: Buoy 46235 (Imperial Beach Nearshore), Backup: Buoy 46232 (Point Loma South)
                 
@@ -1134,11 +1136,21 @@
                 const buoy46235TxtUrl = getMobileFallbackUrls('https://www.ndbc.noaa.gov/data/realtime2/46235.txt');
                 const buoy46235SpecUrl = getMobileFallbackUrls('https://www.ndbc.noaa.gov/data/realtime2/46235.spec');
                 
+                console.log('SEA CONDITIONS DEBUG: URLs generated:', {
+                    txt: buoy46235TxtUrl,
+                    spec: buoy46235SpecUrl
+                });
+                
                 // Try primary buoy 46235 first with timeout
                 let [metResponse, specResponse] = await Promise.allSettled([
                     fetchWithTimeout(buoy46235TxtUrl, 12000),
                     fetchWithTimeout(buoy46235SpecUrl, 12000)
                 ]);
+                
+                console.log('SEA CONDITIONS DEBUG: Response statuses:', {
+                    met: metResponse.status,
+                    spec: specResponse.status
+                });
                 
                 let currentBuoy = '46235 (Imperial Beach Nearshore)';
                 
@@ -1162,8 +1174,13 @@
                 
                 // Process standard meteorological data
                 if (metResponse.status === 'fulfilled' && metResponse.value.ok) {
+                    console.log('SEA CONDITIONS DEBUG: Met response OK, processing text...');
                     const text = await metResponse.value.text();
+                    console.log('SEA CONDITIONS DEBUG: Met raw text length:', text.length);
+                    console.log('SEA CONDITIONS DEBUG: Met raw text sample:', text.substring(0, 300));
+                    
                     const lines = text.split('\n');
+                    console.log('SEA CONDITIONS DEBUG: Met lines count:', lines.length);
                     
                     // Find the first line with valid buoy data (skip headers and missing data)
                     for (let i = 2; i < Math.min(lines.length, 20); i++) {
@@ -1289,17 +1306,32 @@
         // Fetch NOAA surface and tidal currents data
         async function fetchCurrentsData() {
             try {
+                console.log('CURRENTS DEBUG: Starting fetch');
                 
                 // Use NOAA CO-OPS API for currents data near San Diego
                 // Station 9410170 is San Diego Bay, but we need currents station
                 const currentDate = new Date().toISOString().split('T')[0];
+                console.log('CURRENTS DEBUG: Using date:', currentDate);
                 
                 // Try to get currents data from nearby stations
-                const currentsUrl = getCorsProxyUrl(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentDate}&end_date=${currentDate}&station=9410170&product=currents&datum=MLLW&units=english&time_zone=lst_ldt&format=json&bin=1`);
-                const response = await fetch(currentsUrl);
+                const currentsUrl = getMobileFallbackUrls(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentDate}&end_date=${currentDate}&station=9410170&product=currents&datum=MLLW&units=english&time_zone=lst_ldt&format=json&bin=1`);
+                console.log('CURRENTS DEBUG: URL generated:', currentsUrl);
+                
+                const response = await fetchWithTimeout(currentsUrl);
+                console.log('CURRENTS DEBUG: Response status:', response.status);
                 
                 if (response.ok) {
-                    const data = await response.json();
+                    const responseText = await response.text();
+                    console.log('CURRENTS DEBUG: Raw response:', responseText.substring(0, 300));
+                    
+                    let data;
+                    try {
+                        data = JSON.parse(responseText);
+                        console.log('CURRENTS DEBUG: Parsed JSON:', data);
+                    } catch (parseError) {
+                        console.error('CURRENTS DEBUG: JSON parse failed:', parseError);
+                        throw new Error('Failed to parse currents JSON');
+                    }
                     
                     if (data.current_predictions && data.current_predictions.length > 0) {
                         const latest = data.current_predictions[data.current_predictions.length - 1];
