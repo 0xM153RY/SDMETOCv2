@@ -1292,14 +1292,27 @@
             } catch (error) {
                 console.error('SEA CONDITIONS ERROR:', error.message);
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                const errorText = isMobile ? 'Mobile Network Issue' : 'Unavailable';
                 
+                // Provide honest, specific error messages
+                let errorText;
+                if (isMobile) {
+                    if (error.message.includes('CORS') || error.message.includes('blocked')) {
+                        errorText = 'CORS Blocked';
+                    } else {
+                        errorText = 'Mobile Network Issue';
+                    }
+                } else {
+                    errorText = 'Unavailable';
+                }
+                
+                console.log('SEA CONDITIONS: Showing error status:', errorText);
                 updateElement('wave-height', errorText);
                 updateElement('wave-period', errorText);
                 updateElement('water-temp', errorText);
                 updateElement('swell-height', errorText);
                 updateElement('swell-period', errorText);
                 updateElement('swell-direction', errorText);
+                updateElement('buoy-source', isMobile ? 'NOAA Buoy (CORS Blocked)' : 'Unavailable');
             }
         }
 
@@ -1361,6 +1374,18 @@
                 }
                 
             } catch (error) {
+                console.error('CURRENTS PRIMARY ERROR:', error.message);
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                
+                // For mobile CORS errors, show honest status without trying fallbacks
+                if (isMobile && (error.message.includes('CORS') || error.message.includes('blocked'))) {
+                    console.log('CURRENTS: Mobile CORS blocked - showing honest status');
+                    updateElement('current-speed', 'CORS Blocked');
+                    updateElement('current-direction', 'CORS Blocked');
+                    updateElement('tidal-current', 'CORS Blocked');
+                    return; // Exit without trying fallbacks
+                }
+                
                 // Try alternative approach with general tidal flow estimation
                 try {
                     // Get tide data to estimate tidal currents
