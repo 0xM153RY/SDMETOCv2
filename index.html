@@ -761,13 +761,19 @@
         // Fetch weather forecast
         async function fetchWeatherForecast() {
             try {
-                    
+                console.log('WEATHER FORECAST: Starting (working: weather/tides/astro, testing: forecast endpoint)');
+                
                 const forecastUrl = getMobileFallbackUrls('https://api.weather.gov/gridpoints/SGX/64,16/forecast/hourly');
+                console.log('WEATHER FORECAST: Trying same domain as working weather (api.weather.gov) but different endpoint /gridpoints/SGX/64,16/forecast/hourly');
+                
                 const response = await fetchWithTimeout(forecastUrl);
                 
                 if (!response.ok) throw new Error('Forecast API unavailable');
                 
                 const data = await response.json();
+                console.log('WEATHER FORECAST DEBUG: Response data structure:', Object.keys(data));
+                console.log('WEATHER FORECAST DEBUG: Properties keys:', data.properties ? Object.keys(data.properties) : 'No properties');
+                
                 const forecast = data.properties.periods;
                 
                 if (forecast && forecast.length > 0) {
@@ -806,6 +812,10 @@
                 
                 
             } catch (error) {
+                console.log('WEATHER FORECAST: Failed with error:', error.message);
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                console.log('WEATHER FORECAST: Mobile device:', isMobile, 'Error type analysis...');
+                
                 updateElement('weather-forecast', 'Forecast unavailable');
             }
         }
@@ -1099,9 +1109,13 @@
         // Fetch enhanced real sea conditions from NOAA buoy with spectral wave data
         async function fetchRealSeaData() {
             try {
+                console.log('SEA CONDITIONS: Starting (working: weather/tides/astro, testing: buoy data)');
+                
                 // Primary: Buoy 46235 (Imperial Beach Nearshore), Backup: Buoy 46232 (Point Loma South)
                 const buoy46235TxtUrl = getMobileFallbackUrls('https://www.ndbc.noaa.gov/data/realtime2/46235.txt');
                 const buoy46235SpecUrl = getMobileFallbackUrls('https://www.ndbc.noaa.gov/data/realtime2/46235.spec');
+                
+                console.log('SEA CONDITIONS: Trying NOAA NDBC buoy data (text format, different from working JSON APIs)');
                 
                 // Try primary buoy 46235 first
                 let [metResponse, specResponse] = await Promise.allSettled([
@@ -1271,15 +1285,22 @@
         // Fetch NOAA surface and tidal currents data
         async function fetchCurrentsData() {
             try {
+                console.log('SURFACE CURRENTS: Starting (working: weather/tides/astro, testing: currents API)');
+                
                 // Use NOAA CO-OPS API for currents data near San Diego
                 const currentDate = new Date().toISOString().split('T')[0];
                 const currentsUrl = getMobileFallbackUrls(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentDate}&end_date=${currentDate}&station=9410170&product=currents&datum=MLLW&units=english&time_zone=lst_ldt&format=json&bin=1`);
+                console.log('SURFACE CURRENTS: Trying same domain as working tides (api.tidesandcurrents.noaa.gov) but different product=currents');
+                
                 const response = await fetchWithTimeout(currentsUrl);
                 
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('SURFACE CURRENTS DEBUG: Response data structure:', Object.keys(data));
+                    console.log('SURFACE CURRENTS DEBUG: Raw data sample:', JSON.stringify(data).substring(0, 200) + '...');
                     
                     if (data.current_predictions && data.current_predictions.length > 0) {
+                        console.log('SURFACE CURRENTS DEBUG: Found', data.current_predictions.length, 'current predictions');
                         const latest = data.current_predictions[data.current_predictions.length - 1];
                         
                         const speed = parseFloat(latest.s);
@@ -1307,7 +1328,9 @@
                 }
                 
             } catch (error) {
+                console.log('SURFACE CURRENTS: Failed with error:', error.message);
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                console.log('SURFACE CURRENTS: Mobile device:', isMobile, 'Error type analysis...');
                 
                 // For mobile CORS errors, show honest status without trying fallbacks
                 if (isMobile && (error.message.includes('CORS') || error.message.includes('blocked'))) {
@@ -1901,8 +1924,12 @@
         // Fetch real air quality data from EPA AirNow
         async function fetchRealAirQuality() {
             try {
-// EPA AirNow API endpoint for San Diego (zip code 92101) with mobile fallback
+                console.log('AIR QUALITY: Starting (working: weather/tides/astro, testing: airnowapi.org)');
+                
+                // EPA AirNow API endpoint for San Diego (zip code 92101) with mobile fallback
                 const airQualityUrl = getMobileFallbackUrls(`https://www.airnowapi.org/aq/observation/zipCode/current/?format=application/json&API_KEY=64CC1372-9F33-4AA3-8788-9AB1C2AE9E12&zipCode=92101&distance=25`);
+                console.log('AIR QUALITY: Trying EPA AirNow (different domain from working NOAA APIs)');
+                
                 const response = await fetchWithTimeout(airQualityUrl);
                 
                 if (!response.ok) throw new Error('EPA AirNow API unavailable');
@@ -2017,6 +2044,30 @@
                 
                 console.log('MOBILE SEQUENCE: 5/11 - Loading Air Quality...');
                 await fetchRealAirQuality().catch(() => {});
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                console.log('MOBILE SEQUENCE: 6/11 - Loading Surface Currents...');
+                await fetchCurrentsData().catch(() => {});
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                console.log('MOBILE SEQUENCE: 7/11 - Loading Weather Forecast...');
+                await fetchWeatherForecast().catch(() => {});
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                console.log('MOBILE SEQUENCE: 8/11 - Loading Earthquake Data...');
+                await fetchEarthquakeData().catch(() => {});
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                console.log('MOBILE SEQUENCE: 9/11 - Loading Tsunami Alerts...');
+                await fetchTsunamiAlerts().catch(() => {});
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                console.log('MOBILE SEQUENCE: 10/11 - Loading USCG Notices...');
+                await fetchRealNotices().catch(() => {});
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                console.log('MOBILE SEQUENCE: 11/11 - Loading Weather Alerts...');
+                await fetchRealWeatherAlerts().catch(() => {});
                 
                 console.log('MOBILE DEBUG: Completed sequential loading - check results above');
             } else {
