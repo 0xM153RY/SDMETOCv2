@@ -648,12 +648,20 @@
             }
         }
 
-        // Clean fetch function with simple mobile handling
+        // Enhanced fetch function with mobile proxy support
         async function fetchWithTimeout(url, timeout = 30000) {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
-            // Mobile direct connection - simple approach
+            // Mobile now uses same proxy approach as desktop - no special handling needed
+            if (isMobile && typeof url === 'string' && url.includes('allorigins.win')) {
+                console.log('MOBILE PROXY: Fetching via allorigins.win proxy');
+            } else if (isMobile && typeof url === 'string' && url.includes('codetabs.com')) {
+                console.log('MOBILE PROXY: Fetching via codetabs.com proxy');
+            }
+            
+            // Legacy mobile direct connection support (should not be used anymore)
             if (isMobile && typeof url === 'object' && url.mobileDirect) {
+                console.log('MOBILE LEGACY: This should not happen with new proxy system');
                 console.log('MOBILE: Direct connection to', url.original?.substring(0, 60));
                 
                 try {
@@ -1084,24 +1092,29 @@
             return originalUrl;
         }
 
-        // Clean mobile strategy - simple and reliable
+        // Enhanced mobile strategy - use same proven proxies as desktop
         function getMobileFallbackUrls(originalUrl) {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
             if (isMobile && (window.location.hostname.includes('github.io') || 
                            (window.location.protocol === 'https:' && window.location.hostname !== 'localhost'))) {
                 
-                // Simple mobile approach: try direct connection only
-                // If it fails, show honest CORS blocked status
-                return {
-                    url: originalUrl,
-                    original: originalUrl,
-                    isMobile: true,
-                    mobileDirect: true
-                };
+                console.log('MOBILE PROXY: Using same proxy system as working desktop version');
+                
+                // Use same proxy system as desktop for mobile
+                if (originalUrl.includes('tidesandcurrents.noaa.gov') || originalUrl.includes('weather.gov')) {
+                    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(originalUrl);
+                    console.log('MOBILE PROXY: NOAA API via allorigins.win:', proxyUrl.substring(0, 100) + '...');
+                    return proxyUrl;
+                }
+                
+                // Use codetabs for other APIs on mobile (same as desktop)
+                const proxyUrl = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(originalUrl);
+                console.log('MOBILE PROXY: Other API via codetabs.com:', proxyUrl.substring(0, 100) + '...');
+                return proxyUrl;
             }
             
-            // Desktop - maintain full original proxy system
+            // Desktop - maintain original proxy system
             return getCorsProxyUrl(originalUrl);
         }
 
