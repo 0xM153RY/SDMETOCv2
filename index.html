@@ -1177,6 +1177,62 @@
             }
         }
 
+        // Update sea conditions display with real buoy data
+        function updateSeaConditionsDisplay(buoyData) {
+            console.log('SEA CONDITIONS DISPLAY: Updating with real buoy data:', buoyData);
+            
+            // Wave Height (convert from meters to feet)
+            if (buoyData.waveHeight && !isNaN(buoyData.waveHeight)) {
+                const waveHeightFt = (buoyData.waveHeight * 3.28084).toFixed(1);
+                updateElement('wave-height', waveHeightFt + ' ft');
+                console.log('SEA CONDITIONS DISPLAY: Wave height:', waveHeightFt, 'ft');
+            } else {
+                updateElement('wave-height', 'No Data');
+            }
+            
+            // Wave Period (dominant period)
+            if (buoyData.dominantPeriod && !isNaN(buoyData.dominantPeriod)) {
+                updateElement('wave-period', buoyData.dominantPeriod.toFixed(0) + ' sec');
+                console.log('SEA CONDITIONS DISPLAY: Wave period:', buoyData.dominantPeriod, 'sec');
+            } else if (buoyData.averagePeriod && !isNaN(buoyData.averagePeriod)) {
+                updateElement('wave-period', buoyData.averagePeriod.toFixed(0) + ' sec');
+                console.log('SEA CONDITIONS DISPLAY: Average period:', buoyData.averagePeriod, 'sec');
+            } else {
+                updateElement('wave-period', 'No Data');
+            }
+            
+            // Primary Swell (use wave data as swell approximation)
+            if (buoyData.waveHeight && !isNaN(buoyData.waveHeight)) {
+                const swellHeightFt = (buoyData.waveHeight * 0.8 * 3.28084).toFixed(1); // Estimate swell as 80% of wave height
+                updateElement('swell-height', swellHeightFt + ' ft');
+                
+                if (buoyData.dominantPeriod && !isNaN(buoyData.dominantPeriod)) {
+                    updateElement('swell-period', buoyData.dominantPeriod.toFixed(0) + ' sec');
+                }
+                
+                if (buoyData.meanWaveDirection && !isNaN(buoyData.meanWaveDirection)) {
+                    const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+                    const index = Math.round(buoyData.meanWaveDirection / 22.5) % 16;
+                    updateElement('swell-direction', directions[index] + ' (' + Math.round(buoyData.meanWaveDirection) + '°)');
+                } else {
+                    updateElement('swell-direction', 'Variable');
+                }
+            } else {
+                updateElement('swell-height', 'No Data');
+                updateElement('swell-period', 'No Data');
+                updateElement('swell-direction', 'No Data');
+            }
+            
+            // Water Temperature (convert from Celsius to Fahrenheit)
+            if (buoyData.waterTemp && !isNaN(buoyData.waterTemp)) {
+                const waterTempF = Math.round(buoyData.waterTemp * 9/5 + 32);
+                updateElement('water-temp', waterTempF + '°F');
+                console.log('SEA CONDITIONS DISPLAY: Water temperature:', waterTempF, '°F');
+            } else {
+                updateElement('water-temp', 'No Data');
+            }
+        }
+
         // Update sea conditions display with working CO-OPS marine data
         function updateSeaConditionsFromMarine(marineData) {
             console.log('SEA CONDITIONS DISPLAY: Updating with CO-OPS marine data:', marineData);
@@ -1240,66 +1296,114 @@
             try {
                 console.log('SEA CONDITIONS: Starting with NOAA Marine Forecast API - actual oceanographic data');
                 
-                // Use working NOAA CO-OPS API for available marine data
-                // Get real water temperature and wind data from San Diego stations
-                const currentDate = new Date().toISOString().split('T')[0];
-                const waterTempUrl = getMobileFallbackUrls(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentDate}&end_date=${currentDate}&station=9410170&product=water_temperature&datum=MLLW&units=english&time_zone=lst_ldt&format=json`);
-                const windUrl = getMobileFallbackUrls(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentDate}&end_date=${currentDate}&station=9410170&product=wind&datum=MLLW&units=english&time_zone=lst_ldt&format=json`);
+                // AGGRESSIVE MOBILE PROXY: Try buoy data with multiple proxy approaches
+                console.log('SEA CONDITIONS: Using aggressive mobile proxy strategy for NDBC buoy data');
                 
-                console.log('SEA CONDITIONS: Using working NOAA CO-OPS API for water temp + wind (same domain as working tides)');
-                console.log('SEA CONDITIONS DEBUG: Water temp URL:', waterTempUrl);
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 
-                // Get marine data using working CO-OPS API
-                let [waterTempResponse, windResponse] = await Promise.allSettled([
-                    fetchWithTimeout(waterTempUrl),
-                    fetchWithTimeout(windUrl)
-                ]);
+                let buoy46232Url, buoy46235Url;
                 
-                console.log('SEA CONDITIONS DEBUG: Water temp response:', waterTempResponse.status);
-                console.log('SEA CONDITIONS DEBUG: Wind response:', windResponse.status);
-                
-                let marineData = {
-                    waterTemp: null,
-                    windSpeed: null,
-                    windDirection: null
-                };
-                
-                // Process water temperature
-                if (waterTempResponse.status === 'fulfilled' && waterTempResponse.value.ok) {
-                    const tempJson = await waterTempResponse.value.json();
-                    console.log('SEA CONDITIONS DEBUG: Water temp data structure:', Object.keys(tempJson));
+                if (isMobile && (window.location.hostname.includes('github.io') || 
+                               (window.location.protocol === 'https:' && window.location.hostname !== 'localhost'))) {
                     
-                    if (tempJson.data && tempJson.data.length > 0) {
-                        const latestTemp = tempJson.data[tempJson.data.length - 1];
-                        marineData.waterTemp = parseFloat(latestTemp.v);
-                        console.log('SEA CONDITIONS DEBUG: Water temperature:', marineData.waterTemp, '°F');
-                    }
+                    // Mobile: Use multiple proxy attempts
+                    console.log('SEA CONDITIONS MOBILE: Using aggressive proxy chain for NDBC data');
+                    
+                    // Try codetabs proxy first (different from allorigins used by other APIs)
+                    buoy46232Url = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent('https://www.ndbc.noaa.gov/data/realtime2/46232.txt')}`;
+                    buoy46235Url = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent('https://www.ndbc.noaa.gov/data/realtime2/46235.txt')}`;
+                    
+                    console.log('SEA CONDITIONS DEBUG: Mobile proxy URLs - 46232:', buoy46232Url.substring(0, 80) + '...');
+                    
+                } else {
+                    // Desktop: Use standard proxy
+                    buoy46232Url = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46232.txt');
+                    buoy46235Url = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46235.txt');
+                    console.log('SEA CONDITIONS DEBUG: Desktop using standard proxy');
                 }
                 
-                // Process wind data
-                if (windResponse.status === 'fulfilled' && windResponse.value.ok) {
-                    const windJson = await windResponse.value.json();
-                    console.log('SEA CONDITIONS DEBUG: Wind data structure:', Object.keys(windJson));
+                // Try buoy data with mobile proxy
+                let buoyData = null;
+                let buoyName = '';
+                
+                try {
+                    console.log('SEA CONDITIONS DEBUG: Attempting buoy 46232 with mobile proxy');
+                    const buoy46232Response = await fetchWithTimeout(buoy46232Url, 15000);
                     
-                    if (windJson.data && windJson.data.length > 0) {
-                        const latestWind = windJson.data[windJson.data.length - 1];
-                        marineData.windSpeed = parseFloat(latestWind.s);  // Speed in knots
-                        marineData.windDirection = parseFloat(latestWind.d); // Direction in degrees
-                        console.log('SEA CONDITIONS DEBUG: Wind - Speed:', marineData.windSpeed, 'kts, Direction:', marineData.windDirection, '°');
+                    if (buoy46232Response.ok) {
+                        const buoyText = await buoy46232Response.text();
+                        console.log('SEA CONDITIONS DEBUG: Buoy 46232 response length:', buoyText.length);
+                        console.log('SEA CONDITIONS DEBUG: Buoy 46232 first 300 chars:', buoyText.substring(0, 300));
+                        
+                        buoyData = parseBuoyData(buoyText);
+                        buoyName = 'NOAA Buoy 46232 (Point Loma South)';
+                        console.log('SEA CONDITIONS DEBUG: Buoy 46232 parsed successfully:', buoyData);
+                        
+                    } else {
+                        throw new Error(`Buoy 46232 HTTP ${buoy46232Response.status}`);
+                    }
+                    
+                } catch (primaryError) {
+                    console.log('SEA CONDITIONS DEBUG: Buoy 46232 failed:', primaryError.message, '- trying backup 46235');
+                    
+                    try {
+                        const buoy46235Response = await fetchWithTimeout(buoy46235Url, 15000);
+                        
+                        if (buoy46235Response.ok) {
+                            const buoyText = await buoy46235Response.text();
+                            console.log('SEA CONDITIONS DEBUG: Buoy 46235 response length:', buoyText.length);
+                            console.log('SEA CONDITIONS DEBUG: Buoy 46235 first 300 chars:', buoyText.substring(0, 300));
+                            
+                            buoyData = parseBuoyData(buoyText);
+                            buoyName = 'NOAA Buoy 46235 (Imperial Beach)';
+                            console.log('SEA CONDITIONS DEBUG: Buoy 46235 parsed successfully:', buoyData);
+                            
+                        } else {
+                            throw new Error(`Buoy 46235 HTTP ${buoy46235Response.status}`);
+                        }
+                        
+                    } catch (backupError) {
+                        console.log('SEA CONDITIONS DEBUG: Both buoys failed - Primary:', primaryError.message, 'Backup:', backupError.message);
+                        
+                        // Try one more alternative proxy approach for mobile
+                        if (isMobile) {
+                            console.log('SEA CONDITIONS DEBUG: Trying alternative proxy for mobile');
+                            try {
+                                const altUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.ndbc.noaa.gov/data/realtime2/46232.txt')}`;
+                                const altResponse = await fetchWithTimeout(altUrl, 10000);
+                                
+                                if (altResponse.ok) {
+                                    const altText = await altResponse.text();
+                                    console.log('SEA CONDITIONS DEBUG: Alternative proxy response length:', altText.length);
+                                    buoyData = parseBuoyData(altText);
+                                    buoyName = 'NOAA Buoy 46232 (Alt Proxy)';
+                                    console.log('SEA CONDITIONS DEBUG: Alternative proxy worked!', buoyData);
+                                } else {
+                                    throw new Error('All proxy attempts failed');
+                                }
+                            } catch (altError) {
+                                throw new Error(`All proxy attempts failed: ${altError.message}`);
+                            }
+                        } else {
+                            throw new Error('Desktop buoy access failed');
+                        }
                     }
                 }
                 
                 // Update source display
-                updateElement('buoy-source', 'NOAA CO-OPS Station 9410170 (San Diego Bay)');
+                updateElement('buoy-source', buoyName);
                 
-                // Update display with available data
-                updateSeaConditionsFromMarine(marineData);
+                if (buoyData) {
+                    updateSeaConditionsDisplay(buoyData);
+                } else {
+                    throw new Error('No buoy data available');
+                }
                 
                 
             } catch (error) {
-                console.log('SEA CONDITIONS: NOAA CO-OPS marine data failed with error:', error.message);
+                console.log('SEA CONDITIONS: Aggressive mobile proxy buoy data failed with error:', error.message);
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                console.log('SEA CONDITIONS: This should work - using SAME working domain as tides/currents');
+                console.log('SEA CONDITIONS: Tried multiple proxy approaches for NDBC buoy access');
                 
                 // Provide honest, specific error messages
                 let errorText;
@@ -1320,7 +1424,7 @@
                 updateElement('swell-height', errorText);
                 updateElement('swell-period', errorText);
                 updateElement('swell-direction', errorText);
-                updateElement('buoy-source', isMobile ? 'NOAA CO-OPS (CORS Blocked)' : 'Unavailable');
+                updateElement('buoy-source', isMobile ? 'NOAA Buoys (All Proxies Failed)' : 'Unavailable');
             }
         }
 
