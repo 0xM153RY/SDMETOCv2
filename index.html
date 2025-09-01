@@ -1177,59 +1177,61 @@
             }
         }
 
-        // Update sea conditions display with real buoy data
-        function updateSeaConditionsDisplay(buoyData) {
-            console.log('SEA CONDITIONS DISPLAY: Updating with buoy data:', buoyData);
+        // Update sea conditions display with working CO-OPS marine data
+        function updateSeaConditionsFromMarine(marineData) {
+            console.log('SEA CONDITIONS DISPLAY: Updating with CO-OPS marine data:', marineData);
             
-            // Wave Height (convert from meters to feet)
-            if (buoyData.waveHeight && !isNaN(buoyData.waveHeight)) {
-                const waveHeightFt = (buoyData.waveHeight * 3.28084).toFixed(1);
-                updateElement('wave-height', waveHeightFt + ' ft');
-                console.log('SEA CONDITIONS DISPLAY: Wave height:', waveHeightFt, 'ft');
+            // Real Water Temperature (already in Fahrenheit from CO-OPS API)
+            if (marineData.waterTemp && !isNaN(marineData.waterTemp)) {
+                updateElement('water-temp', Math.round(marineData.waterTemp) + '°F');
+                console.log('SEA CONDITIONS DISPLAY: Real water temperature:', marineData.waterTemp, '°F');
             } else {
-                updateElement('wave-height', 'No Data');
+                updateElement('water-temp', 'No Data');
             }
             
-            // Wave Period (dominant period)
-            if (buoyData.dominantPeriod && !isNaN(buoyData.dominantPeriod)) {
-                updateElement('wave-period', buoyData.dominantPeriod.toFixed(0) + ' sec');
-                console.log('SEA CONDITIONS DISPLAY: Wave period:', buoyData.dominantPeriod, 'sec');
-            } else if (buoyData.averagePeriod && !isNaN(buoyData.averagePeriod)) {
-                updateElement('wave-period', buoyData.averagePeriod.toFixed(0) + ' sec');
-                console.log('SEA CONDITIONS DISPLAY: Average period:', buoyData.averagePeriod, 'sec');
+            // Estimate wave conditions from real wind data
+            if (marineData.windSpeed && !isNaN(marineData.windSpeed)) {
+                // Beaufort scale-based wave height estimation from real wind
+                let waveHeightFt;
+                if (marineData.windSpeed < 1) waveHeightFt = 0;
+                else if (marineData.windSpeed < 4) waveHeightFt = 0.25;
+                else if (marineData.windSpeed < 7) waveHeightFt = 0.5;
+                else if (marineData.windSpeed < 11) waveHeightFt = 1.0;
+                else if (marineData.windSpeed < 16) waveHeightFt = 2.0;
+                else if (marineData.windSpeed < 22) waveHeightFt = 3.5;
+                else if (marineData.windSpeed < 28) waveHeightFt = 6.0;
+                else waveHeightFt = 9.0;
+                
+                updateElement('wave-height', waveHeightFt.toFixed(1) + ' ft (est)');
+                
+                // Wave period from wind speed (typical relationship)
+                const periodSec = Math.max(4, Math.min(12, marineData.windSpeed * 0.4));
+                updateElement('wave-period', periodSec.toFixed(0) + ' sec (est)');
+                
+                console.log('SEA CONDITIONS DISPLAY: Wave estimates - Height:', waveHeightFt, 'ft, Period:', periodSec, 'sec from', marineData.windSpeed, 'kt wind');
             } else {
+                updateElement('wave-height', 'No Data');
                 updateElement('wave-period', 'No Data');
             }
             
-            // Primary Swell (use wave data as swell approximation)
-            if (buoyData.waveHeight && !isNaN(buoyData.waveHeight)) {
-                const swellHeightFt = (buoyData.waveHeight * 0.8 * 3.28084).toFixed(1); // Estimate swell as 80% of wave height
-                updateElement('swell-height', swellHeightFt + ' ft');
+            // Estimate swell from wind (slightly smaller and longer period)
+            if (marineData.windSpeed && !isNaN(marineData.windSpeed) && marineData.windDirection && !isNaN(marineData.windDirection)) {
+                const swellHeightFt = Math.max(0.5, marineData.windSpeed * 0.1);
+                const swellPeriod = Math.max(6, Math.min(14, marineData.windSpeed * 0.6));
                 
-                if (buoyData.dominantPeriod && !isNaN(buoyData.dominantPeriod)) {
-                    updateElement('swell-period', buoyData.dominantPeriod.toFixed(0) + ' sec');
-                }
+                updateElement('swell-height', swellHeightFt.toFixed(1) + ' ft (est)');
+                updateElement('swell-period', swellPeriod.toFixed(0) + ' sec (est)');
                 
-                if (buoyData.meanWaveDirection && !isNaN(buoyData.meanWaveDirection)) {
-                    const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
-                    const index = Math.round(buoyData.meanWaveDirection / 22.5) % 16;
-                    updateElement('swell-direction', directions[index] + ' (' + Math.round(buoyData.meanWaveDirection) + '°)');
-                } else {
-                    updateElement('swell-direction', 'Variable');
-                }
+                // Wind direction as swell direction
+                const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+                const index = Math.round(marineData.windDirection / 22.5) % 16;
+                updateElement('swell-direction', directions[index] + ' (' + Math.round(marineData.windDirection) + '°)');
+                
+                console.log('SEA CONDITIONS DISPLAY: Swell estimates - Height:', swellHeightFt, 'ft, Period:', swellPeriod, 'sec, Direction:', directions[index]);
             } else {
                 updateElement('swell-height', 'No Data');
                 updateElement('swell-period', 'No Data');
                 updateElement('swell-direction', 'No Data');
-            }
-            
-            // Water Temperature (convert from Celsius to Fahrenheit)
-            if (buoyData.waterTemp && !isNaN(buoyData.waterTemp)) {
-                const waterTempF = Math.round(buoyData.waterTemp * 9/5 + 32);
-                updateElement('water-temp', waterTempF + '°F');
-                console.log('SEA CONDITIONS DISPLAY: Water temperature:', waterTempF, '°F');
-            } else {
-                updateElement('water-temp', 'No Data');
             }
         }
 
@@ -1238,67 +1240,66 @@
             try {
                 console.log('SEA CONDITIONS: Starting with NOAA Marine Forecast API - actual oceanographic data');
                 
-                // Try multiple buoy data sources - start with closest San Diego buoys
-                // Primary: Point Loma South (46232), Backup: Imperial Beach (46235)  
-                const buoy46232Url = getMobileFallbackUrls('https://www.ndbc.noaa.gov/data/realtime2/46232.txt');
-                const buoy46235Url = getMobileFallbackUrls('https://www.ndbc.noaa.gov/data/realtime2/46235.txt');
+                // Use working NOAA CO-OPS API for available marine data
+                // Get real water temperature and wind data from San Diego stations
+                const currentDate = new Date().toISOString().split('T')[0];
+                const waterTempUrl = getMobileFallbackUrls(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentDate}&end_date=${currentDate}&station=9410170&product=water_temperature&datum=MLLW&units=english&time_zone=lst_ldt&format=json`);
+                const windUrl = getMobileFallbackUrls(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentDate}&end_date=${currentDate}&station=9410170&product=wind&datum=MLLW&units=english&time_zone=lst_ldt&format=json`);
                 
-                console.log('SEA CONDITIONS: Using NOAA buoys 46232 (Point Loma) and 46235 (Imperial Beach)');
-                console.log('SEA CONDITIONS DEBUG: Primary buoy URL:', buoy46232Url);
+                console.log('SEA CONDITIONS: Using working NOAA CO-OPS API for water temp + wind (same domain as working tides)');
+                console.log('SEA CONDITIONS DEBUG: Water temp URL:', waterTempUrl);
                 
-                // Try primary buoy 46232 first
-                let buoyResponse;
-                let buoyData = null;
-                let buoyName = '';
+                // Get marine data using working CO-OPS API
+                let [waterTempResponse, windResponse] = await Promise.allSettled([
+                    fetchWithTimeout(waterTempUrl),
+                    fetchWithTimeout(windUrl)
+                ]);
                 
-                try {
-                    console.log('SEA CONDITIONS DEBUG: Trying primary buoy 46232 (Point Loma South)');
-                    buoyResponse = await fetchWithTimeout(buoy46232Url);
+                console.log('SEA CONDITIONS DEBUG: Water temp response:', waterTempResponse.status);
+                console.log('SEA CONDITIONS DEBUG: Wind response:', windResponse.status);
+                
+                let marineData = {
+                    waterTemp: null,
+                    windSpeed: null,
+                    windDirection: null
+                };
+                
+                // Process water temperature
+                if (waterTempResponse.status === 'fulfilled' && waterTempResponse.value.ok) {
+                    const tempJson = await waterTempResponse.value.json();
+                    console.log('SEA CONDITIONS DEBUG: Water temp data structure:', Object.keys(tempJson));
                     
-                    if (buoyResponse.ok) {
-                        const buoyText = await buoyResponse.text();
-                        console.log('SEA CONDITIONS DEBUG: Buoy 46232 text (first 200 chars):', buoyText.substring(0, 200));
-                        buoyData = parseBuoyData(buoyText);
-                        buoyName = 'NOAA Buoy 46232 (Point Loma South)';
-                        console.log('SEA CONDITIONS DEBUG: Successfully parsed buoy 46232 data');
-                    } else {
-                        throw new Error('Buoy 46232 HTTP ' + buoyResponse.status);
+                    if (tempJson.data && tempJson.data.length > 0) {
+                        const latestTemp = tempJson.data[tempJson.data.length - 1];
+                        marineData.waterTemp = parseFloat(latestTemp.v);
+                        console.log('SEA CONDITIONS DEBUG: Water temperature:', marineData.waterTemp, '°F');
                     }
-                } catch (primaryError) {
-                    console.log('SEA CONDITIONS DEBUG: Buoy 46232 failed, trying backup 46235:', primaryError.message);
+                }
+                
+                // Process wind data
+                if (windResponse.status === 'fulfilled' && windResponse.value.ok) {
+                    const windJson = await windResponse.value.json();
+                    console.log('SEA CONDITIONS DEBUG: Wind data structure:', Object.keys(windJson));
                     
-                    try {
-                        buoyResponse = await fetchWithTimeout(buoy46235Url);
-                        
-                        if (buoyResponse.ok) {
-                            const buoyText = await buoyResponse.text();
-                            console.log('SEA CONDITIONS DEBUG: Buoy 46235 text (first 200 chars):', buoyText.substring(0, 200));
-                            buoyData = parseBuoyData(buoyText);
-                            buoyName = 'NOAA Buoy 46235 (Imperial Beach)';
-                            console.log('SEA CONDITIONS DEBUG: Successfully parsed buoy 46235 data');
-                        } else {
-                            throw new Error('Buoy 46235 HTTP ' + buoyResponse.status);
-                        }
-                    } catch (backupError) {
-                        console.log('SEA CONDITIONS DEBUG: Both buoys failed - 46232:', primaryError.message, '46235:', backupError.message);
-                        throw new Error('Both buoys unavailable');
+                    if (windJson.data && windJson.data.length > 0) {
+                        const latestWind = windJson.data[windJson.data.length - 1];
+                        marineData.windSpeed = parseFloat(latestWind.s);  // Speed in knots
+                        marineData.windDirection = parseFloat(latestWind.d); // Direction in degrees
+                        console.log('SEA CONDITIONS DEBUG: Wind - Speed:', marineData.windSpeed, 'kts, Direction:', marineData.windDirection, '°');
                     }
                 }
                 
                 // Update source display
-                updateElement('buoy-source', buoyName);
+                updateElement('buoy-source', 'NOAA CO-OPS Station 9410170 (San Diego Bay)');
                 
-                if (buoyData) {
-                    updateSeaConditionsDisplay(buoyData);
-                } else {
-                    throw new Error('No buoy data parsed');
-                }
+                // Update display with available data
+                updateSeaConditionsFromMarine(marineData);
                 
                 
             } catch (error) {
-                console.log('SEA CONDITIONS: NOAA buoy data failed with error:', error.message);
+                console.log('SEA CONDITIONS: NOAA CO-OPS marine data failed with error:', error.message);
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                console.log('SEA CONDITIONS: Buoy data from NDBC may be CORS blocked on mobile');
+                console.log('SEA CONDITIONS: This should work - using SAME working domain as tides/currents');
                 
                 // Provide honest, specific error messages
                 let errorText;
@@ -1319,7 +1320,7 @@
                 updateElement('swell-height', errorText);
                 updateElement('swell-period', errorText);
                 updateElement('swell-direction', errorText);
-                updateElement('buoy-source', isMobile ? 'NOAA Buoys (CORS Blocked)' : 'Unavailable');
+                updateElement('buoy-source', isMobile ? 'NOAA CO-OPS (CORS Blocked)' : 'Unavailable');
             }
         }
 
