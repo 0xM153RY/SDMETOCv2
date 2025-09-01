@@ -1106,131 +1106,132 @@
         }
 
 
-        // Fetch enhanced real sea conditions from NOAA buoy with spectral wave data
-        async function fetchRealSeaData() {
+        // Parse NOAA marine forecast text for wave/swell data
+        function parseMarineForecast(forecastText) {
+            console.log('SEA CONDITIONS PARSER: Starting marine forecast parsing');
+            
             try {
-                console.log('SEA CONDITIONS: Starting (working: weather/tides/astro, testing: buoy data)');
+                // Marine forecasts typically contain patterns like:
+                // "Seas 3 to 4 ft. Wave Detail: W 2 ft at 6 seconds and SW 3 ft at 17 seconds"
+                // "Water temperature around 68 degrees"
                 
-                // Try NOAA CO-OPS JSON API (same domain as working tides) for sea conditions
-                const currentDate = new Date().toISOString().split('T')[0];
-                const windUrl = getMobileFallbackUrls(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentDate}&end_date=${currentDate}&station=9410230&product=wind&datum=MLLW&units=english&time_zone=lst_ldt&format=json`);
-                const waterTempUrl = getMobileFallbackUrls(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentDate}&end_date=${currentDate}&station=9410230&product=water_temperature&datum=MLLW&units=english&time_zone=lst_ldt&format=json`);
-                
-                console.log('SEA CONDITIONS: Trying NOAA CO-OPS JSON API (same domain as working tides)');
-                console.log('SEA CONDITIONS DEBUG: Using JSON endpoints instead of NDBC text files:', windUrl);
-                
-                // Try CO-OPS JSON endpoints
-                let [windResponse, tempResponse] = await Promise.allSettled([
-                    fetchWithTimeout(windUrl),
-                    fetchWithTimeout(waterTempUrl)
-                ]);
-                
-                console.log('SEA CONDITIONS DEBUG: Wind response status:', windResponse.status);
-                console.log('SEA CONDITIONS DEBUG: Temp response status:', tempResponse.status);
-                if (windResponse.status === 'rejected') {
-                    console.log('SEA CONDITIONS DEBUG: Wind response error:', windResponse.reason.message);
-                }
-                if (tempResponse.status === 'rejected') {
-                    console.log('SEA CONDITIONS DEBUG: Temp response error:', tempResponse.reason.message);
-                }
-                
-                let currentStation = 'NOAA Station 9410230 (La Jolla)';
-                
-                // Update the source display
-                updateElement('buoy-source', currentStation);
-                
-                let windData = null;
-                let tempData = null;
-                
-                // Process wind data from CO-OPS JSON API
-                if (windResponse.status === 'fulfilled' && windResponse.value.ok) {
-                    const windJson = await windResponse.value.json();
-                    console.log('SEA CONDITIONS DEBUG: Wind data structure:', Object.keys(windJson));
-                    
-                    if (windJson.data && windJson.data.length > 0) {
-                        windData = windJson.data[windJson.data.length - 1]; // Most recent
-                        console.log('SEA CONDITIONS DEBUG: Wind data sample:', windData);
-                    }
-                }
-                
-                // Process water temperature data from CO-OPS JSON API
-                if (tempResponse.status === 'fulfilled' && tempResponse.value.ok) {
-                    const tempJson = await tempResponse.value.json();
-                    console.log('SEA CONDITIONS DEBUG: Temp data structure:', Object.keys(tempJson));
-                    
-                    if (tempJson.data && tempJson.data.length > 0) {
-                        tempData = tempJson.data[tempJson.data.length - 1]; // Most recent
-                        console.log('SEA CONDITIONS DEBUG: Temp data sample:', tempData);
-                    }
-                }
-                
-                console.log('SEA CONDITIONS DEBUG: windData:', windData);
-                console.log('SEA CONDITIONS DEBUG: tempData:', tempData);
-                
-                // Update display with JSON API data
-                if (windData && windData.s) { // Wind speed
-                    const windSpeedKnots = parseFloat(windData.s);
-                    if (!isNaN(windSpeedKnots)) {
-                        // Estimate wave height from wind speed (rough approximation)
-                        const estimatedWaveHeight = Math.max(0.5, windSpeedKnots * 0.1).toFixed(1);
-                        updateElement('wave-height', estimatedWaveHeight + ' ft (est)');
-                        updateElement('wave-period', '6-8 sec (est)');
+                // Extract significant wave height (Seas X to Y ft)
+                const seasMatch = forecastText.match(/Seas\s+(\d+(?:\.\d+)?)\s+to\s+(\d+(?:\.\d+)?)\s+ft/i);
+                if (seasMatch) {
+                    const minHeight = parseFloat(seasMatch[1]);
+                    const maxHeight = parseFloat(seasMatch[2]);
+                    const avgHeight = ((minHeight + maxHeight) / 2).toFixed(1);
+                    updateElement('wave-height', avgHeight + ' ft');
+                    console.log('SEA CONDITIONS PARSER: Found wave height:', avgHeight, 'ft');
+                } else {
+                    // Try alternative format "Combined seas X ft"
+                    const combinedMatch = forecastText.match(/Combined\s+seas\s+(\d+(?:\.\d+)?)\s+ft/i);
+                    if (combinedMatch) {
+                        updateElement('wave-height', combinedMatch[1] + ' ft');
+                        console.log('SEA CONDITIONS PARSER: Found combined seas:', combinedMatch[1], 'ft');
                     } else {
                         updateElement('wave-height', 'No Data');
-                        updateElement('wave-period', 'No Data');
                     }
+                }
+                
+                // Extract wave periods from Wave Detail
+                const waveDetailMatch = forecastText.match(/Wave\s+Detail:.*?(\d+)\s+seconds/i);
+                if (waveDetailMatch) {
+                    updateElement('wave-period', waveDetailMatch[1] + ' sec');
+                    console.log('SEA CONDITIONS PARSER: Found wave period:', waveDetailMatch[1], 'sec');
                 } else {
-                    updateElement('wave-height', 'No Data');
                     updateElement('wave-period', 'No Data');
                 }
                 
-                // Water Temperature from CO-OPS
-                if (tempData && tempData.v) {
-                    const waterTempC = parseFloat(tempData.v);
-                    if (!isNaN(waterTempC) && waterTempC > -10 && waterTempC < 50) {
-                        const waterTempF = Math.round(waterTempC * 9/5 + 32);
-                        updateElement('water-temp', waterTempF + '°F');
-                    } else {
-                        updateElement('water-temp', 'No Data');
-                    }
-                } else {
-                    updateElement('water-temp', 'No Data');
-                }
-                
-                // Update swell data - simplified estimates
-                if (windData && windData.d && windData.s) { // Wind direction and speed
-                    const windDir = parseFloat(windData.d);
-                    const windSpeed = parseFloat(windData.s);
+                // Extract swell data from Wave Detail (e.g., "SW 3 ft at 17 seconds")
+                const swellMatch = forecastText.match(/Wave\s+Detail:.*?([A-Z]{1,3})\s+(\d+(?:\.\d+)?)\s+ft\s+at\s+(\d+)\s+seconds/i);
+                if (swellMatch) {
+                    const swellDir = swellMatch[1];
+                    const swellHeight = swellMatch[2];
+                    const swellPeriod = swellMatch[3];
                     
-                    if (!isNaN(windDir) && !isNaN(windSpeed)) {
-                        // Estimate swell from wind
-                        const estimatedSwellHeight = Math.max(0.3, windSpeed * 0.08).toFixed(1);
-                        const estimatedSwellPeriod = Math.max(4, Math.min(12, windSpeed * 0.4)).toFixed(0);
-                        
-                        const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
-                        const index = Math.round(windDir / 22.5) % 16;
-                        const swellDirText = directions[index] + ' (' + Math.round(windDir) + '°)';
-                        
-                        updateElement('swell-height', estimatedSwellHeight + ' ft (est)');
-                        updateElement('swell-period', estimatedSwellPeriod + ' sec (est)');
-                        updateElement('swell-direction', swellDirText);
-                    } else {
-                        updateElement('swell-height', 'No Data');
-                        updateElement('swell-period', 'No Data');
-                        updateElement('swell-direction', 'No Data');
-                    }
+                    updateElement('swell-height', swellHeight + ' ft');
+                    updateElement('swell-period', swellPeriod + ' sec');
+                    updateElement('swell-direction', swellDir);
+                    
+                    console.log('SEA CONDITIONS PARSER: Found swell - Height:', swellHeight, 'ft, Period:', swellPeriod, 'sec, Direction:', swellDir);
                 } else {
-                    // No wind data available
                     updateElement('swell-height', 'No Data');
                     updateElement('swell-period', 'No Data');
                     updateElement('swell-direction', 'No Data');
                 }
                 
+                // Extract water temperature
+                const tempMatch = forecastText.match(/Water\s+temperature\s+around\s+(\d+)\s+degrees/i);
+                if (tempMatch) {
+                    updateElement('water-temp', tempMatch[1] + '°F');
+                    console.log('SEA CONDITIONS PARSER: Found water temperature:', tempMatch[1], '°F');
+                } else {
+                    updateElement('water-temp', 'No Data');
+                }
                 
             } catch (error) {
-                console.log('SEA CONDITIONS: JSON API approach failed with error:', error.message);
+                console.log('SEA CONDITIONS PARSER: Failed to parse forecast text:', error.message);
+                updateElement('wave-height', 'Parse Error');
+                updateElement('wave-period', 'Parse Error');
+                updateElement('swell-height', 'Parse Error');
+                updateElement('swell-period', 'Parse Error');
+                updateElement('swell-direction', 'Parse Error');
+                updateElement('water-temp', 'Parse Error');
+            }
+        }
+
+        // Fetch real sea conditions from NOAA Marine Forecast API
+        async function fetchRealSeaData() {
+            try {
+                console.log('SEA CONDITIONS: Starting with NOAA Marine Forecast API - actual oceanographic data');
+                
+                // Use NOAA Marine Forecast for San Diego coastal waters (same working API domain)
+                // PZZ740: Coastal Waters from San Mateo Point to the Mexican Border out to 10 NM
+                const marineZoneUrl = getMobileFallbackUrls('https://api.weather.gov/zones/forecast/PZZ740');
+                
+                console.log('SEA CONDITIONS: Using NOAA Marine Zone PZZ740 for actual wave/swell data');
+                console.log('SEA CONDITIONS DEBUG: Marine zone API (same domain as working weather):', marineZoneUrl);
+                
+                // Get marine forecast data (same domain as working weather API)
+                const marineResponse = await fetchWithTimeout(marineZoneUrl);
+                
+                if (!marineResponse.ok) throw new Error('Marine forecast API unavailable');
+                
+                const marineData = await marineResponse.json();
+                console.log('SEA CONDITIONS DEBUG: Marine data structure:', Object.keys(marineData));
+                console.log('SEA CONDITIONS DEBUG: Properties available:', marineData.properties ? Object.keys(marineData.properties) : 'None');
+                
+                // Update source display
+                updateElement('buoy-source', 'NOAA Marine Forecast (PZZ740)');
+                
+                let marineProperties = null;
+                if (marineData.properties) {
+                    marineProperties = marineData.properties;
+                    console.log('SEA CONDITIONS DEBUG: Marine forecast properties:', marineProperties);
+                    
+                    // Look for forecast periods with marine data
+                    if (marineProperties.forecast) {
+                        console.log('SEA CONDITIONS DEBUG: Marine forecast data available:', marineProperties.forecast);
+                        
+                        // Parse marine forecast for wave/swell data
+                        const forecastText = marineProperties.forecast;
+                        console.log('SEA CONDITIONS DEBUG: Raw forecast text (first 300 chars):', forecastText.substring(0, 300));
+                        
+                        parseMarineForecast(forecastText);
+                    } else {
+                        console.log('SEA CONDITIONS DEBUG: No marine forecast data found');
+                        throw new Error('No marine forecast available');
+                    }
+                } else {
+                    throw new Error('Invalid marine forecast response');
+                }
+                
+                
+            } catch (error) {
+                console.log('SEA CONDITIONS: Marine forecast API failed with error:', error.message);
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                console.log('SEA CONDITIONS: This should work since it uses same domain as working tides API');
+                console.log('SEA CONDITIONS: This should work since it uses the SAME working api.weather.gov domain');
                 
                 // Provide honest, specific error messages
                 let errorText;
@@ -1251,7 +1252,7 @@
                 updateElement('swell-height', errorText);
                 updateElement('swell-period', errorText);
                 updateElement('swell-direction', errorText);
-                updateElement('buoy-source', isMobile ? 'NOAA CO-OPS (CORS Blocked)' : 'Unavailable');
+                updateElement('buoy-source', isMobile ? 'NOAA Marine (CORS Blocked)' : 'Unavailable');
             }
         }
 
