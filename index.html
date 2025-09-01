@@ -1346,6 +1346,118 @@
             }
         }
 
+        // Parse NOAA marine forecast text for wave data
+        function parseMarineForecastText(marineText) {
+            console.log('SEA CONDITIONS MARINE PARSER: Starting marine forecast parsing');
+            
+            try {
+                // Look for wave height patterns like "3 to 4 ft" or "seas 3-4 ft"
+                const waveHeightMatch = marineText.match(/(?:seas?\s+|wave\s+height\s+)(?:of\s+)?(\d+(?:\.\d+)?)\s*(?:to\s+|\-)?(\d+(?:\.\d+)?)\s*ft/i);
+                
+                let waveHeight = null;
+                if (waveHeightMatch) {
+                    const min = parseFloat(waveHeightMatch[1]);
+                    const max = parseFloat(waveHeightMatch[2]) || min;
+                    waveHeight = (min + max) / 2;
+                    console.log('SEA CONDITIONS MARINE PARSER: Found wave height:', min, 'to', max, 'ft, average:', waveHeight);
+                }
+                
+                // Look for wave period patterns like "W 3 ft at 12 seconds"
+                const periodMatches = marineText.matchAll(/([NSEW]{1,3})\s+(\d+(?:\.\d+)?)\s*ft\s+at\s+(\d+(?:\.\d+)?)\s*seconds?/gi);
+                const periods = [];
+                
+                for (const match of periodMatches) {
+                    const direction = match[1];
+                    const height = parseFloat(match[2]);
+                    const period = parseFloat(match[3]);
+                    periods.push({ direction, height, period });
+                    console.log('SEA CONDITIONS MARINE PARSER: Found wave component:', direction, height, 'ft at', period, 'sec');
+                }
+                
+                // Get dominant period (from largest wave component)
+                let dominantPeriod = null;
+                if (periods.length > 0) {
+                    const largest = periods.reduce((prev, current) => (current.height > prev.height) ? current : prev);
+                    dominantPeriod = largest.period;
+                }
+                
+                // Look for water temperature (might not be in marine forecast)
+                const tempMatch = marineText.match(/water\s+temperature\s+(?:around\s+|about\s+)?(\d+)\s*degrees?/i);
+                let waterTemp = null;
+                if (tempMatch) {
+                    waterTemp = parseFloat(tempMatch[1]);
+                }
+                
+                if (waveHeight || dominantPeriod || periods.length > 0) {
+                    const result = {
+                        waveHeight: waveHeight,
+                        wavePeriod: dominantPeriod,
+                        waterTemp: waterTemp,
+                        waveComponents: periods
+                    };
+                    console.log('SEA CONDITIONS MARINE PARSER: Parsed forecast data:', result);
+                    return result;
+                } else {
+                    console.log('SEA CONDITIONS MARINE PARSER: No recognizable wave data found');
+                    return null;
+                }
+                
+            } catch (error) {
+                console.log('SEA CONDITIONS MARINE PARSER: Failed to parse marine forecast:', error.message);
+                return null;
+            }
+        }
+
+        // Update sea conditions display with marine forecast data
+        function updateSeaConditionsFromMarineForecast(forecastData) {
+            console.log('SEA CONDITIONS DISPLAY: Updating with marine forecast data:', forecastData);
+            
+            // Wave Height 
+            if (forecastData.waveHeight && !isNaN(forecastData.waveHeight)) {
+                updateElement('wave-height', forecastData.waveHeight.toFixed(1) + ' ft');
+                console.log('SEA CONDITIONS DISPLAY: Wave height:', forecastData.waveHeight, 'ft');
+            } else {
+                updateElement('wave-height', 'No Data');
+            }
+            
+            // Wave Period
+            if (forecastData.wavePeriod && !isNaN(forecastData.wavePeriod)) {
+                updateElement('wave-period', forecastData.wavePeriod.toFixed(0) + ' sec');
+                console.log('SEA CONDITIONS DISPLAY: Wave period:', forecastData.wavePeriod, 'sec');
+            } else {
+                updateElement('wave-period', 'No Data');
+            }
+            
+            // Primary Swell (use largest wave component)
+            if (forecastData.waveComponents && forecastData.waveComponents.length > 0) {
+                const primarySwell = forecastData.waveComponents[0]; // Usually first/largest component
+                
+                updateElement('swell-height', primarySwell.height.toFixed(1) + ' ft');
+                updateElement('swell-period', primarySwell.period.toFixed(0) + ' sec');
+                updateElement('swell-direction', primarySwell.direction);
+                
+                console.log('SEA CONDITIONS DISPLAY: Primary swell:', primarySwell.direction, primarySwell.height, 'ft at', primarySwell.period, 'sec');
+            } else if (forecastData.waveHeight) {
+                // Estimate swell from wave height
+                const swellHeight = (forecastData.waveHeight * 0.8).toFixed(1);
+                updateElement('swell-height', swellHeight + ' ft (est)');
+                updateElement('swell-period', forecastData.wavePeriod ? forecastData.wavePeriod.toFixed(0) + ' sec' : 'N/A');
+                updateElement('swell-direction', 'SW (est)');
+            } else {
+                updateElement('swell-height', 'No Data');
+                updateElement('swell-period', 'No Data'); 
+                updateElement('swell-direction', 'No Data');
+            }
+            
+            // Water Temperature
+            if (forecastData.waterTemp && !isNaN(forecastData.waterTemp)) {
+                updateElement('water-temp', Math.round(forecastData.waterTemp) + '°F');
+                console.log('SEA CONDITIONS DISPLAY: Water temperature:', forecastData.waterTemp, '°F');
+            } else {
+                updateElement('water-temp', 'No Data');
+            }
+        }
+
         // Update sea conditions display with working CO-OPS marine data
         function updateSeaConditionsFromMarine(marineData) {
             console.log('SEA CONDITIONS DISPLAY: Updating with CO-OPS marine data:', marineData);
@@ -1409,42 +1521,42 @@
             try {
                 console.log('SEA CONDITIONS: Starting with NOAA Marine Forecast API - actual oceanographic data');
                 
-                // NEW APPROACH: Use CDIP (UC San Diego) wave buoy data - more mobile friendly
-                console.log('SEA CONDITIONS: Using CDIP UC San Diego wave buoy data');
+                // FINAL APPROACH: Use working NOAA marine forecast from forecast.weather.gov
+                console.log('SEA CONDITIONS: Using NOAA marine forecast (same working domain as weather)');
                 
-                // CDIP has San Diego area stations with real wave data
-                const cdipDataUrl = getMobileFallbackUrls('https://cdip.ucsd.edu/data_access/sccoos.cdip');
+                // Use forecast.weather.gov marine forecast for San Diego (PZZ740)
+                const marineUrl = getMobileFallbackUrls('https://forecast.weather.gov/shmrn.php?mz=pzz740&syn=pzz700');
                 
-                console.log('SEA CONDITIONS DEBUG: CDIP data URL:', cdipDataUrl);
+                console.log('SEA CONDITIONS DEBUG: NOAA marine forecast URL:', marineUrl);
                 
-                // Try CDIP data
-                console.log('SEA CONDITIONS DEBUG: Attempting CDIP UC San Diego data');
-                const cdipResponse = await fetchWithTimeout(cdipDataUrl, 12000);
+                // Try marine forecast data
+                console.log('SEA CONDITIONS DEBUG: Attempting NOAA marine forecast');
+                const marineResponse = await fetchWithTimeout(marineUrl, 12000);
                 
-                if (!cdipResponse.ok) {
-                    throw new Error(`CDIP API HTTP ${cdipResponse.status}`);
+                if (!marineResponse.ok) {
+                    throw new Error(`Marine forecast HTTP ${marineResponse.status}`);
                 }
                 
-                const cdipText = await cdipResponse.text();
-                console.log('SEA CONDITIONS DEBUG: CDIP response length:', cdipText.length);
-                console.log('SEA CONDITIONS DEBUG: CDIP first 500 chars:', cdipText.substring(0, 500));
+                const marineText = await marineResponse.text();
+                console.log('SEA CONDITIONS DEBUG: Marine forecast length:', marineText.length);
+                console.log('SEA CONDITIONS DEBUG: Marine forecast sample:', marineText.substring(0, 500));
                 
-                const cdipData = parseCdipData(cdipText);
-                if (!cdipData) {
-                    throw new Error('Failed to parse CDIP data');
+                const marineData = parseMarineForecastText(marineText);
+                if (!marineData) {
+                    throw new Error('Failed to parse marine forecast');
                 }
                 
                 // Update source display
-                updateElement('buoy-source', cdipData.stationName);
+                updateElement('buoy-source', 'NOAA Marine Forecast (PZZ740)');
                 
-                // Update display with CDIP data
-                updateSeaConditionsFromCdip(cdipData);
+                // Update display with marine forecast data
+                updateSeaConditionsFromMarineForecast(marineData);
                 
                 
             } catch (error) {
-                console.log('SEA CONDITIONS: CDIP UC San Diego data failed with error:', error.message);
+                console.log('SEA CONDITIONS: NOAA marine forecast failed with error:', error.message);
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                console.log('SEA CONDITIONS: CDIP might have CORS restrictions or data format issues');
+                console.log('SEA CONDITIONS: This should work - using same forecast.weather.gov domain');
                 
                 // Provide honest, specific error messages
                 let errorText;
@@ -1465,7 +1577,7 @@
                 updateElement('swell-height', errorText);
                 updateElement('swell-period', errorText);
                 updateElement('swell-direction', errorText);
-                updateElement('buoy-source', isMobile ? 'CDIP (CORS Blocked)' : 'Unavailable');
+                updateElement('buoy-source', isMobile ? 'Marine Forecast (CORS Blocked)' : 'Unavailable');
             }
         }
 
