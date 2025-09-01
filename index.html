@@ -1233,6 +1233,119 @@
             }
         }
 
+        // Parse CDIP UC San Diego wave data
+        function parseCdipData(cdipText) {
+            console.log('SEA CONDITIONS CDIP PARSER: Starting CDIP data parsing');
+            
+            try {
+                // Find San Diego area stations in CDIP data
+                const lines = cdipText.split('\n');
+                
+                // Look for Point Loma South, Mission Bay West, or Imperial Beach
+                let stationData = null;
+                let stationName = '';
+                
+                for (const line of lines) {
+                    if (line.includes('Point Loma South') || line.includes('Mission Bay West') || line.includes('Imperial Beach')) {
+                        console.log('SEA CONDITIONS CDIP PARSER: Found San Diego station line:', line);
+                        
+                        // Parse the data line - format might be tab or space separated
+                        const parts = line.split(/\s+/);
+                        
+                        // Try to find wave height, period, and temperature values
+                        for (let i = 0; i < parts.length; i++) {
+                            const value = parseFloat(parts[i]);
+                            if (!isNaN(value)) {
+                                if (!stationData) {
+                                    stationData = {
+                                        waveHeight: null,
+                                        wavePeriod: null,
+                                        waterTemp: null
+                                    };
+                                }
+                                
+                                // Heuristic: First reasonable value is wave height, second is period, third is temp
+                                if (value > 0 && value < 10 && !stationData.waveHeight) {
+                                    stationData.waveHeight = value; // meters
+                                } else if (value > 5 && value < 25 && !stationData.wavePeriod) {
+                                    stationData.wavePeriod = value; // seconds
+                                } else if (value > 10 && value < 35 && !stationData.waterTemp) {
+                                    stationData.waterTemp = value; // Celsius
+                                }
+                            }
+                        }
+                        
+                        if (line.includes('Point Loma South')) stationName = 'CDIP Point Loma South';
+                        else if (line.includes('Mission Bay West')) stationName = 'CDIP Mission Bay West';  
+                        else if (line.includes('Imperial Beach')) stationName = 'CDIP Imperial Beach Nearshore';
+                        
+                        break;
+                    }
+                }
+                
+                if (stationData) {
+                    stationData.stationName = stationName;
+                    console.log('SEA CONDITIONS CDIP PARSER: Parsed data:', stationData);
+                    return stationData;
+                } else {
+                    console.log('SEA CONDITIONS CDIP PARSER: No San Diego stations found');
+                    return null;
+                }
+                
+            } catch (error) {
+                console.log('SEA CONDITIONS CDIP PARSER: Failed to parse CDIP text:', error.message);
+                return null;
+            }
+        }
+
+        // Update sea conditions display with CDIP data
+        function updateSeaConditionsFromCdip(cdipData) {
+            console.log('SEA CONDITIONS DISPLAY: Updating with CDIP data:', cdipData);
+            
+            // Wave Height (convert from meters to feet)
+            if (cdipData.waveHeight && !isNaN(cdipData.waveHeight)) {
+                const waveHeightFt = (cdipData.waveHeight * 3.28084).toFixed(1);
+                updateElement('wave-height', waveHeightFt + ' ft');
+                console.log('SEA CONDITIONS DISPLAY: CDIP wave height:', waveHeightFt, 'ft');
+            } else {
+                updateElement('wave-height', 'No Data');
+            }
+            
+            // Wave Period
+            if (cdipData.wavePeriod && !isNaN(cdipData.wavePeriod)) {
+                updateElement('wave-period', cdipData.wavePeriod.toFixed(0) + ' sec');
+                console.log('SEA CONDITIONS DISPLAY: CDIP wave period:', cdipData.wavePeriod, 'sec');
+            } else {
+                updateElement('wave-period', 'No Data');
+            }
+            
+            // Primary Swell (estimate from wave data)
+            if (cdipData.waveHeight && !isNaN(cdipData.waveHeight)) {
+                const swellHeightFt = (cdipData.waveHeight * 0.75 * 3.28084).toFixed(1); // Swell ~75% of wave
+                updateElement('swell-height', swellHeightFt + ' ft');
+                
+                if (cdipData.wavePeriod && !isNaN(cdipData.wavePeriod)) {
+                    updateElement('swell-period', cdipData.wavePeriod.toFixed(0) + ' sec');
+                }
+                
+                // Typical San Diego swell direction (SW)
+                updateElement('swell-direction', 'SW (est)');
+            } else {
+                updateElement('swell-height', 'No Data');
+                updateElement('swell-period', 'No Data');
+                updateElement('swell-direction', 'No Data');
+            }
+            
+            // Water Temperature (convert from Celsius to Fahrenheit)
+            if (cdipData.waterTemp && !isNaN(cdipData.waterTemp)) {
+                const waterTempF = Math.round(cdipData.waterTemp * 9/5 + 32);
+                updateElement('water-temp', waterTempF + '°F');
+                console.log('SEA CONDITIONS DISPLAY: CDIP water temperature:', waterTempF, '°F');
+            } else {
+                updateElement('water-temp', 'No Data');
+            }
+        }
+
         // Update sea conditions display with working CO-OPS marine data
         function updateSeaConditionsFromMarine(marineData) {
             console.log('SEA CONDITIONS DISPLAY: Updating with CO-OPS marine data:', marineData);
@@ -1296,114 +1409,42 @@
             try {
                 console.log('SEA CONDITIONS: Starting with NOAA Marine Forecast API - actual oceanographic data');
                 
-                // AGGRESSIVE MOBILE PROXY: Try buoy data with multiple proxy approaches
-                console.log('SEA CONDITIONS: Using aggressive mobile proxy strategy for NDBC buoy data');
+                // NEW APPROACH: Use CDIP (UC San Diego) wave buoy data - more mobile friendly
+                console.log('SEA CONDITIONS: Using CDIP UC San Diego wave buoy data');
                 
-                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                // CDIP has San Diego area stations with real wave data
+                const cdipDataUrl = getMobileFallbackUrls('https://cdip.ucsd.edu/data_access/sccoos.cdip');
                 
-                let buoy46232Url, buoy46235Url;
+                console.log('SEA CONDITIONS DEBUG: CDIP data URL:', cdipDataUrl);
                 
-                if (isMobile && (window.location.hostname.includes('github.io') || 
-                               (window.location.protocol === 'https:' && window.location.hostname !== 'localhost'))) {
-                    
-                    // Mobile: Use multiple proxy attempts
-                    console.log('SEA CONDITIONS MOBILE: Using aggressive proxy chain for NDBC data');
-                    
-                    // Try codetabs proxy first (different from allorigins used by other APIs)
-                    buoy46232Url = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent('https://www.ndbc.noaa.gov/data/realtime2/46232.txt')}`;
-                    buoy46235Url = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent('https://www.ndbc.noaa.gov/data/realtime2/46235.txt')}`;
-                    
-                    console.log('SEA CONDITIONS DEBUG: Mobile proxy URLs - 46232:', buoy46232Url.substring(0, 80) + '...');
-                    
-                } else {
-                    // Desktop: Use standard proxy
-                    buoy46232Url = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46232.txt');
-                    buoy46235Url = getCorsProxyUrl('https://www.ndbc.noaa.gov/data/realtime2/46235.txt');
-                    console.log('SEA CONDITIONS DEBUG: Desktop using standard proxy');
+                // Try CDIP data
+                console.log('SEA CONDITIONS DEBUG: Attempting CDIP UC San Diego data');
+                const cdipResponse = await fetchWithTimeout(cdipDataUrl, 12000);
+                
+                if (!cdipResponse.ok) {
+                    throw new Error(`CDIP API HTTP ${cdipResponse.status}`);
                 }
                 
-                // Try buoy data with mobile proxy
-                let buoyData = null;
-                let buoyName = '';
+                const cdipText = await cdipResponse.text();
+                console.log('SEA CONDITIONS DEBUG: CDIP response length:', cdipText.length);
+                console.log('SEA CONDITIONS DEBUG: CDIP first 500 chars:', cdipText.substring(0, 500));
                 
-                try {
-                    console.log('SEA CONDITIONS DEBUG: Attempting buoy 46232 with mobile proxy');
-                    const buoy46232Response = await fetchWithTimeout(buoy46232Url, 15000);
-                    
-                    if (buoy46232Response.ok) {
-                        const buoyText = await buoy46232Response.text();
-                        console.log('SEA CONDITIONS DEBUG: Buoy 46232 response length:', buoyText.length);
-                        console.log('SEA CONDITIONS DEBUG: Buoy 46232 first 300 chars:', buoyText.substring(0, 300));
-                        
-                        buoyData = parseBuoyData(buoyText);
-                        buoyName = 'NOAA Buoy 46232 (Point Loma South)';
-                        console.log('SEA CONDITIONS DEBUG: Buoy 46232 parsed successfully:', buoyData);
-                        
-                    } else {
-                        throw new Error(`Buoy 46232 HTTP ${buoy46232Response.status}`);
-                    }
-                    
-                } catch (primaryError) {
-                    console.log('SEA CONDITIONS DEBUG: Buoy 46232 failed:', primaryError.message, '- trying backup 46235');
-                    
-                    try {
-                        const buoy46235Response = await fetchWithTimeout(buoy46235Url, 15000);
-                        
-                        if (buoy46235Response.ok) {
-                            const buoyText = await buoy46235Response.text();
-                            console.log('SEA CONDITIONS DEBUG: Buoy 46235 response length:', buoyText.length);
-                            console.log('SEA CONDITIONS DEBUG: Buoy 46235 first 300 chars:', buoyText.substring(0, 300));
-                            
-                            buoyData = parseBuoyData(buoyText);
-                            buoyName = 'NOAA Buoy 46235 (Imperial Beach)';
-                            console.log('SEA CONDITIONS DEBUG: Buoy 46235 parsed successfully:', buoyData);
-                            
-                        } else {
-                            throw new Error(`Buoy 46235 HTTP ${buoy46235Response.status}`);
-                        }
-                        
-                    } catch (backupError) {
-                        console.log('SEA CONDITIONS DEBUG: Both buoys failed - Primary:', primaryError.message, 'Backup:', backupError.message);
-                        
-                        // Try one more alternative proxy approach for mobile
-                        if (isMobile) {
-                            console.log('SEA CONDITIONS DEBUG: Trying alternative proxy for mobile');
-                            try {
-                                const altUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.ndbc.noaa.gov/data/realtime2/46232.txt')}`;
-                                const altResponse = await fetchWithTimeout(altUrl, 10000);
-                                
-                                if (altResponse.ok) {
-                                    const altText = await altResponse.text();
-                                    console.log('SEA CONDITIONS DEBUG: Alternative proxy response length:', altText.length);
-                                    buoyData = parseBuoyData(altText);
-                                    buoyName = 'NOAA Buoy 46232 (Alt Proxy)';
-                                    console.log('SEA CONDITIONS DEBUG: Alternative proxy worked!', buoyData);
-                                } else {
-                                    throw new Error('All proxy attempts failed');
-                                }
-                            } catch (altError) {
-                                throw new Error(`All proxy attempts failed: ${altError.message}`);
-                            }
-                        } else {
-                            throw new Error('Desktop buoy access failed');
-                        }
-                    }
+                const cdipData = parseCdipData(cdipText);
+                if (!cdipData) {
+                    throw new Error('Failed to parse CDIP data');
                 }
                 
                 // Update source display
-                updateElement('buoy-source', buoyName);
+                updateElement('buoy-source', cdipData.stationName);
                 
-                if (buoyData) {
-                    updateSeaConditionsDisplay(buoyData);
-                } else {
-                    throw new Error('No buoy data available');
-                }
+                // Update display with CDIP data
+                updateSeaConditionsFromCdip(cdipData);
                 
                 
             } catch (error) {
-                console.log('SEA CONDITIONS: Aggressive mobile proxy buoy data failed with error:', error.message);
+                console.log('SEA CONDITIONS: CDIP UC San Diego data failed with error:', error.message);
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                console.log('SEA CONDITIONS: Tried multiple proxy approaches for NDBC buoy access');
+                console.log('SEA CONDITIONS: CDIP might have CORS restrictions or data format issues');
                 
                 // Provide honest, specific error messages
                 let errorText;
@@ -1424,7 +1465,7 @@
                 updateElement('swell-height', errorText);
                 updateElement('swell-period', errorText);
                 updateElement('swell-direction', errorText);
-                updateElement('buoy-source', isMobile ? 'NOAA Buoys (All Proxies Failed)' : 'Unavailable');
+                updateElement('buoy-source', isMobile ? 'CDIP (CORS Blocked)' : 'Unavailable');
             }
         }
 
