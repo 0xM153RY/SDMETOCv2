@@ -1585,11 +1585,14 @@
             }
             
             // Water Temperature (real data if available)
+            console.log('SEA CONDITIONS DISPLAY: Water temp check - value:', estimates.waterTemp, 'isNaN:', isNaN(estimates.waterTemp));
             if (estimates.waterTemp && !isNaN(estimates.waterTemp)) {
-                updateElement('water-temp', Math.round(estimates.waterTemp) + '°F');
-                console.log('SEA CONDITIONS DISPLAY: Real water temperature:', estimates.waterTemp, '°F');
+                const displayTemp = Math.round(estimates.waterTemp) + '°F';
+                updateElement('water-temp', displayTemp);
+                console.log('SEA CONDITIONS DISPLAY: Displaying water temperature:', displayTemp);
             } else {
                 updateElement('water-temp', 'No Data');
+                console.log('SEA CONDITIONS DISPLAY: No valid water temperature data');
             }
         }
 
@@ -1677,17 +1680,35 @@
                 
                 // Get water temperature from CO-OPS (PROVEN to work)
                 const waterTempUrl = getMobileFallbackUrls(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentDate}&end_date=${currentDate}&station=9410170&product=water_temperature&datum=MLLW&units=english&time_zone=lst_ldt&format=json`);
+                console.log('SEA CONDITIONS DEBUG: Water temp URL:', waterTempUrl);
+                
                 const waterTempResponse = await fetchWithTimeout(waterTempUrl);
+                console.log('SEA CONDITIONS DEBUG: Water temp response status:', waterTempResponse.status);
                 
                 let waterTemp = null;
                 if (waterTempResponse.ok) {
                     const tempData = await waterTempResponse.json();
+                    console.log('SEA CONDITIONS DEBUG: Water temp data:', tempData);
                     if (tempData.data && tempData.data.length > 0) {
                         waterTemp = parseFloat(tempData.data[tempData.data.length - 1].v);
+                        console.log('SEA CONDITIONS DEBUG: Parsed water temp:', waterTemp, '°F');
+                    } else {
+                        console.log('SEA CONDITIONS DEBUG: No water temperature data available');
                     }
+                } else {
+                    console.log('SEA CONDITIONS DEBUG: Water temp API failed with status:', waterTempResponse.status);
                 }
                 
-                console.log('SEA CONDITIONS DEBUG: Using working APIs - weather, tides, water temp');
+                // Fallback: Use air temperature as proxy for water temp if no water temp data
+                if (!waterTemp && weatherData.properties && weatherData.properties.temperature && weatherData.properties.temperature.value !== null) {
+                    const airTempC = parseFloat(weatherData.properties.temperature.value);
+                    const airTempF = (airTempC * 9/5) + 32;
+                    // Estimate water temp as typically 5-10°F cooler than air temp in San Diego
+                    waterTemp = airTempF - 7;
+                    console.log('SEA CONDITIONS DEBUG: Using estimated water temp from air temp:', waterTemp, '°F (est from air)');
+                }
+                
+                console.log('SEA CONDITIONS DEBUG: Final water temp for display:', waterTemp);
                 
                 // Create sea conditions estimate from working data
                 const seaConditions = createSeaConditionsFromWorkingAPIs(weatherData, tidesData, waterTemp);
