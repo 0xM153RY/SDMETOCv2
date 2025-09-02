@@ -519,10 +519,6 @@
                         <span class="data-label">Health Category</span>
                         <span class="data-value" id="aqi-category">Loading...</span>
                     </div>
-                    <div class="data-row">
-                        <span class="data-label">Last Updated</span>
-                        <span class="data-value" id="aqi-time">Loading...</span>
-                    </div>
                 </div>
             </div>
         </div>
@@ -2497,20 +2493,6 @@
                         aqiCategory.textContent = category;
                     }
                     
-                    // Update last updated time
-                    const aqiTime = document.getElementById('aqi-time');
-                    if (aqiTime && primaryData.DateObserved && primaryData.HourObserved >= 0) {
-                        const dateStr = primaryData.DateObserved;
-                        const hour = String(primaryData.HourObserved).padStart(2, '0');
-                        const observationDate = new Date(`${dateStr} ${hour}:00:00 PST`);
-                        
-                        aqiTime.textContent = observationDate.toLocaleTimeString('en-US', {
-                            timeZone: 'America/Los_Angeles',
-                            hour12: false,
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        }) + ' PST';
-                    }
                     
                 } else {
                     console.log('AIR QUALITY DEBUG: Data check failed - data:', data);
@@ -2527,12 +2509,10 @@
                 const aqiIndex = document.getElementById('aqi-index');
                 const aqiPollutant = document.getElementById('aqi-pollutant');
                 const aqiCategory = document.getElementById('aqi-category');
-                const aqiTime = document.getElementById('aqi-time');
                 
                 if (aqiIndex) aqiIndex.textContent = errorText;
                 if (aqiPollutant) aqiPollutant.textContent = errorText;
                 if (aqiCategory) aqiCategory.textContent = errorText;
-                if (aqiTime) aqiTime.textContent = errorText;
             }
         }
 
